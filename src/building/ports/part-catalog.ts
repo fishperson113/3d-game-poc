@@ -1,3 +1,5 @@
+import type { PartDefinition } from "../domain/part-definition";
+
 export interface PartCatalog {
-  has(partDefinitionId: string): boolean;
+  get(partDefinitionId: string): PartDefinition | undefined;
 }

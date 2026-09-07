@@ -1,4 +1,6 @@
-export type Vector3Tuple = readonly [number, number, number];
+import type { Vector3Tuple } from "../../kernel/math";
+
+export type { Vector3Tuple } from "../../kernel/math";
 
 export interface PartTransform {
   readonly position: Vector3Tuple;

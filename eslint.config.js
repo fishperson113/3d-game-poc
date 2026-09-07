@@ -12,6 +12,8 @@ export default tseslint.config(
     },
     rules: {
       "@typescript-eslint/consistent-type-imports": "error",
+      // Scaffold ports intentionally consume dependencies with `void` until their plan adds logic.
+      "@typescript-eslint/no-meaningless-void-operator": "off",
     },
   },
   {
