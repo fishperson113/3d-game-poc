@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "levels": [
+    { "id": "prototype-run-01", "title": "First Run", "definitionUrl": "/content/levels/prototype-run-01/level.json" }
+  ]
+}

@@ -1,0 +1,14 @@
+node_modules/
+dist/
+playwright-report/
+test-results/
+coverage/
+.vite/
+*.local
+
+# Repository-scoped agent tooling is installed from the pinned commit.
+.agents/skills/img2threejs/
+
+# img2threejs can create large transient artifacts. Keep reviewed evidence explicitly.
+work/img2threejs/**
+!work/img2threejs/.gitkeep

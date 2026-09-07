@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "kind": "core.level",
+  "id": "prototype-run-01",
+  "revision": 1,
+  "data": {
+    "title": "First Run",
+    "landscapeUrl": "./landscape.json",
+    "allowedPartSetId": "starter-vehicle",
+    "requires": [{ "capability": "core.objective.enter-trigger", "minVersion": 1 }],
+    "optionalCapabilities": [],
+    "start": { "spawnPointId": "machine-start" },
+    "objectives": [{ "id": "reach-finish", "type": "core.enter-trigger", "required": true, "config": { "triggerId": "finish-zone", "subject": "player-machine" } }],
+    "failureConditions": [{ "type": "core.time-limit", "config": { "seconds": 120 } }]
+  }
+}

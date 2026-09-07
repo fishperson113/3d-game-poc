@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "kind": "core.content-manifest",
+  "id": "bundled-content",
+  "revision": 1,
+  "data": { "levelIndexUrl": "/content/levels/index.json", "partSetUrls": ["/content/part-sets/starter-vehicle.json"] }
+}

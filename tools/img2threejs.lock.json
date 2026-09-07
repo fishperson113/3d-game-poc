@@ -1,0 +1,8 @@
+{
+  "repository": "https://github.com/img2threejs/img2threejs.git",
+  "commit": "6e60b5e22419464b4853e01ddb6c0e6f6659a733",
+  "installMode": "repository-local-source-snapshot",
+  "destination": ".agents/skills/img2threejs",
+  "profile": "generic",
+  "strictQuality": true
+}

@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "kind": "core.part-set",
+  "id": "starter-vehicle",
+  "revision": 1,
+  "data": { "partIds": ["core.structural-block", "core.powered-wheel", "core.steering-hinge"] }
+}
