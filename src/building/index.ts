@@ -1,3 +1,12 @@
-export type { MachineBlueprint, PartInstance, PartTransform } from "./domain/contracts";
-export type { PartDefinition, SocketDefinition } from "./domain/part-definition";
+export { asConnectionId, asControlBindingId, asMachineId, asPartId } from "./domain/contracts";
+export type { Connection, ConnectionId, ConnectionInput, ControlBinding, ControlBindingId, ControlBindingInput, DomainEvent, MachineBlueprint, MachineCommandError, MachineId, MachineMode, PartId, PartInstance, PartTransform, RotationAxis, SocketRef } from "./domain/contracts";
+export type { ConfigurationField, ConfigurationFieldType, ConfigurationValidation, PartConfigurationSchema, PartDefinition, SocketDefinition } from "./domain/part-definition";
+export { normalizePartConfiguration } from "./domain/part-definition";
+export { Machine } from "./domain/machine";
+export type { AddPartInput, MachineChange, MachineDependencies } from "./domain/machine";
+export { exportMachineBlueprint, parseMachineBlueprint, validateBlueprintSemantics } from "./domain/blueprint";
+export type { BlueprintCatalog, BlueprintValidationError } from "./domain/blueprint";
 export { MachineBuildingService } from "./application/machine-building-service";
+export type { BuildingCommand, BuildingCommandError, BuildingEventOptions } from "./application/machine-building-service";
+export { createFourWheelMachineFixture } from "./fixtures/four-wheel-machine";
+export { FourWheelFixtureCatalog } from "./fixtures/four-wheel-catalog";
