@@ -5,4 +5,4 @@ export interface TransformSnapshot {
   readonly rotation: readonly [number, number, number, number];
 }
 
-// TODO(plan-02): Add finite-number and 90-degree rotation guards.
+// Building owns command-level finite-number and stepped-rotation validation.
