@@ -45,6 +45,25 @@ describe("runtime hardening", () => {
     expect(allocations).toBe(0);
   });
 
+  it("keeps the compact knuckle layout clear of the chassis through full steering travel", () => {
+    const catalog = new StaticPartCatalog();
+    const telemetry: RuntimeTelemetryEvent[] = [];
+    const result = new SimulationCompiler({ catalog, events: new NamespacedEventBus(), createPhysicsWorld: () => new RapierPhysicsWorld({ telemetry: (event) => telemetry.push(event) }) }).compile(createRuntimeSampleFixture(catalog, "four-wheel-scout"));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const body = (id: string) => result.value.specification.bodies.find((candidate) => candidate.id === id)?.transform.position;
+    expect(Math.abs((body("wheel-rear-right")?.[0] ?? 0) - 1)).toBeCloseTo(0.2, 8);
+    expect(Math.abs((body("wheel-front-right")?.[0] ?? 0) - 1)).toBeCloseTo(0.4, 8);
+    expect(tupleDistance(body("hinge-front-right") ?? [0, 0, 0], body("wheel-front-right") ?? [0, 0, 0])).toBeCloseTo(0.2, 8);
+    for (const steering of [-1, 1]) {
+      result.value.world.setControls({ throttle: 0, steering });
+      for (let step = 0; step < 240; step += 1) result.value.world.step(1 / 60);
+    }
+    const unintended = telemetry.filter((event) => event.type === "physics.collision.started" && /chassis/.test(JSON.stringify(event.payload)) && /wheel-front/.test(JSON.stringify(event.payload)));
+    expect(unintended).toEqual([]);
+    result.value.world.dispose();
+  });
+
   it("keeps every sample finite with bounded joint-anchor drift under long mixed controls", () => {
     const catalog = new StaticPartCatalog();
     for (const sample of RUNTIME_SAMPLES) {

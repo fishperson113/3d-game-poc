@@ -5,10 +5,10 @@
   "revision": 1,
   "assembly": {
     "sockets": [
-      { "id": "mount-front-left", "accepts": ["mount"], "tags": ["mount"], "position": [-1.55, -0.25, 0.75], "rotation": [0, 0, 0] },
-      { "id": "mount-front-right", "accepts": ["mount"], "tags": ["mount"], "position": [1.55, -0.25, 0.75], "rotation": [0, 0, 0] },
-      { "id": "mount-rear-left", "accepts": ["mount"], "tags": ["mount"], "position": [-1.55, -0.25, -0.75], "rotation": [0, 0, 0] },
-      { "id": "mount-rear-right", "accepts": ["mount"], "tags": ["mount"], "position": [1.55, -0.25, -0.75], "rotation": [0, 0, 0] },
+      { "id": "mount-front-left", "accepts": ["mount"], "tags": ["mount"], "position": [-1, -0.25, 0.75], "rotation": [0, 0, 0] },
+      { "id": "mount-front-right", "accepts": ["mount"], "tags": ["mount"], "position": [1, -0.25, 0.75], "rotation": [0, 3.141592653589793, 0] },
+      { "id": "mount-rear-left", "accepts": ["mount"], "tags": ["mount"], "position": [-1.2, -0.25, -0.75], "rotation": [0, 0, 0] },
+      { "id": "mount-rear-right", "accepts": ["mount"], "tags": ["mount"], "position": [1.2, -0.25, -0.75], "rotation": [0, 3.141592653589793, 0] },
       { "id": "frame-front", "accepts": ["mount"], "tags": ["mount"], "position": [0, 0, 1.25], "rotation": [0, 0, 0] },
       { "id": "frame-rear", "accepts": ["mount"], "tags": ["mount"], "position": [0, 0, -1.25], "rotation": [0, 0, 0] },
       { "id": "frame-left", "accepts": ["mount"], "tags": ["mount"], "position": [-1, 0, 0], "rotation": [0, 0, 0] },
