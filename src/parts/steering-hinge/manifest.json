@@ -16,7 +16,7 @@
     "colliders": [
       { "shape": "cuboid", "halfExtents": [0.2, 0.22, 0.2], "position": [0, 0, 0], "rotation": [0, 0, 0], "friction": 0.8, "restitution": 0 }
     ],
-    "actuator": { "kind": "steering", "axis": [0, 1, 0], "maxForce": 80, "targetSpeed": 2.5, "limitRadians": 0.6, "stiffness": 80, "damping": 8 }
+    "actuator": { "kind": "steering", "socketId": "mount", "axis": [0, 1, 0], "maxForce": 80, "targetSpeed": 2.5, "limitRadians": 0.6, "stiffness": 320, "damping": 20 }
   },
   "visual": {
     "factory": "steering-hinge",

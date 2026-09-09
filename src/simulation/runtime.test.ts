@@ -29,7 +29,7 @@ describe("runtime four wheel physics", () => {
     const driven = world.snapshot().transforms.chassis;
     expect(driven).toBeDefined();
     expect(Math.abs((driven?.position[2] ?? 0) - (settled?.position[2] ?? 0))).toBeGreaterThan(0.25);
-    world.setControls({ throttle: 0, steering: 1 });
+    world.setControls({ throttle: 0.5, steering: 1 });
     for (let step = 0; step < 90; step += 1) world.step(1 / 60);
     const steered = world.snapshot().transforms.chassis;
     expect(steered).toBeDefined();

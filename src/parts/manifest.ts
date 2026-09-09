@@ -27,6 +27,7 @@ export interface PartPhysicsDefinition {
   readonly colliders: readonly PartColliderDefinition[];
   readonly actuator?: {
     readonly kind: PartActuatorKind;
+    readonly socketId?: string;
     readonly axis: Vector3Tuple;
     readonly maxForce: number;
     readonly targetSpeed: number;
@@ -245,7 +246,9 @@ export function parsePartManifest(input: unknown): ParsedManifest {
     if (limitRadians !== undefined && limitRadians instanceof Object && "error" in limitRadians) return limitRadians;
     if (stiffness !== undefined && stiffness instanceof Object && "error" in stiffness) return stiffness;
     if (damping !== undefined && damping instanceof Object && "error" in damping) return damping;
-    parsedActuator = { kind: actuator.kind, axis, maxForce, targetSpeed, ...(limitRadians === undefined ? {} : { limitRadians }), ...(stiffness === undefined ? {} : { stiffness }), ...(damping === undefined ? {} : { damping }) };
+    const socketId = actuator.socketId;
+    if (socketId !== undefined && (typeof socketId !== "string" || !sockets.some((socket) => socket.id === socketId))) return fail("part.manifest.invalid-actuator-socket", "physics.actuator.socketId");
+    parsedActuator = { kind: actuator.kind, ...(typeof socketId === "string" ? { socketId } : {}), axis, maxForce, targetSpeed, ...(limitRadians === undefined ? {} : { limitRadians }), ...(stiffness === undefined ? {} : { stiffness }), ...(damping === undefined ? {} : { damping }) };
   }
   const factory = stringValue(input.visual.factory, "visual.factory");
   const visualRevision = positive(input.visual.revision, "visual.revision");

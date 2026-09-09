@@ -24,12 +24,13 @@ export interface ApplicationComposition {
 export function createApplicationComposition(): ApplicationComposition {
   const sequence = createEventSequenceSource();
   const eventFactory = new EventEnvelopeFactory({ sequence, producer: "sandbox.application" });
+  let runtimeCorrelationId = eventFactory.startCorrelation();
   const memoryLog = new MemoryEventLogSink({ capacity: 1500 });
   const eventLog = new EventLogService([memoryLog, new ConsoleEventLogSink()]);
   const events = new NamespacedEventBus();
   events.subscribe("*", (event) => { eventLog.record(event); });
   const createTelemetry = (producer: string): RuntimeTelemetrySink => (event: RuntimeTelemetryEvent): void => {
-    const created = eventFactory.create({ type: event.type, eventVersion: 1, severity: event.severity ?? "debug", producer, correlationId: eventFactory.startCorrelation(), payload: event.payload, ...(event.tags === undefined ? {} : { tags: event.tags }) });
+    const created = eventFactory.create({ type: event.type, eventVersion: 1, severity: event.severity ?? "debug", producer, correlationId: runtimeCorrelationId, payload: event.payload, ...(event.tags === undefined ? {} : { tags: event.tags }) });
     if (created.ok) events.publish(created.value);
   };
   const catalog = new StaticPartCatalog();
@@ -39,7 +40,10 @@ export function createApplicationComposition(): ApplicationComposition {
     producer: "sandbox.building",
     sequence: () => sequence.next(),
   });
-  const simulationCompiler = new SimulationCompiler({ createPhysicsWorld: () => new RapierPhysicsWorld({ telemetry: createTelemetry("sandbox.physics") }), catalog, events });
+  const simulationCompiler = new SimulationCompiler({ createPhysicsWorld: () => {
+    runtimeCorrelationId = eventFactory.startCorrelation();
+    return new RapierPhysicsWorld({ telemetry: createTelemetry("sandbox.physics") });
+  }, catalog, events });
   return {
     building,
     catalog,
@@ -53,7 +57,7 @@ export function createApplicationComposition(): ApplicationComposition {
       return new SimulationSession(world, new KeyboardInputSource({ telemetry }), renderer, { telemetry });
     },
     emit: (type, payload, severity = "info") => {
-      const created = eventFactory.create({ type, eventVersion: 1, severity, correlationId: eventFactory.startCorrelation(), payload });
+      const created = eventFactory.create({ type, eventVersion: 1, severity, correlationId: type.startsWith("simulation.") ? runtimeCorrelationId : eventFactory.startCorrelation(), payload });
       if (created.ok) events.publish(created.value);
     },
   };

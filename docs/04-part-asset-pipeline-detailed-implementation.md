@@ -26,7 +26,7 @@ Giữ Vanilla TypeScript, Three.js trực tiếp và Rapier; không thêm UI fra
 | `scripts/validate-part.mjs`, `part-qa.mjs` | Kiểm tra manifest tối thiểu, wrapper QA sơ bộ | Dùng validator chung; test selection đúng và chạy được trên Windows |
 | `tools/img2threejs.lock.json` | Đã pin SHA cụ thể | Verify checkout/provenance lúc authoring; không chạy generator khi dev/build |
 
-Baseline trước khi sửa đã kiểm chứng: `npm run check` pass, 9 files / 73 tests. Sau triển khai, regression Node là 12 files / 79 tests; browser e2e và part QA được ghi ở mục evidence cuối tài liệu.
+Baseline trước khi sửa đã kiểm chứng: `npm run check` pass, 9 files / 73 tests. Sau triển khai, regression Node là 13 files / 83 tests; browser e2e và part QA được ghi ở mục evidence cuối tài liệu.
 
 ## 3. Ownership và thay đổi contract
 
@@ -79,7 +79,7 @@ Pass khi blueprint JSON và compiled physics specification không đổi; headle
 
 Kích thước, khối lượng, friction, torque/velocity và steering limit là dữ liệu explicit được chốt ở bước 1–2, có range validation. Dùng `motorTorque` và `steeringLimitRadians` hiện có với semantics rõ; bổ sung speed/force settings khi physics cần, không hard-code theo model.
 
-Xe mẫu mới có chassis ghép từ nhiều blocks, bốn powered wheels và hai steering hinges trước. Đây là fixture tiện dùng, không thay thế acceptance user tự ghép xe từ palette.
+Fixture runtime có Scout bốn bánh, Hauler sáu bánh và Crawler tám bánh. Các frame nối bằng đúng socket đầu tự do sau khi mating rotation, nên block không overlap; tất cả fixture đều dùng catalog và solver authoritative. Đây là shortcut kiểm thử, không thay thế acceptance user tự ghép xe từ palette.
 
 ## 6. Thứ tự triển khai codebase
 
@@ -121,10 +121,11 @@ Checkpoint đạt: browser e2e tự tạo chassis + 2 steering hinges + 4 wheels
 - Tạo `SimulationEnvironment` thuần dữ liệu: gravity, static ground/ramp, spawn. `LoadedLevel` sau này được adapter chuyển thành DTO này trong Plan 05; sandbox không phụ thuộc Challenge.
 - Mở rộng `PhysicsWorld` port cho create bodies/colliders/joints, motor commands và transform snapshots bằng stable IDs; Rapier handles giữ private trong adapter.
 - Init Rapier một lần; compile stable ordering từ immutable blueprint + catalog physics + environment. Validate toàn bộ trước allocation, rollback/dispose nếu allocation thất bại giữa chừng.
-- Structural connections fixed; hinge steering revolute có limits/servo; wheel spin revolute có velocity target và force/torque bound. Chọn joint role từ socket/capability metadata, không if theo instance ID.
+- Structural connections fixed giữ đúng relative orientation ban đầu của các body; hinge steering revolute có limits/servo; wheel spin revolute có velocity target và force/torque bound. Chọn joint role và chiều motor từ socket/capability metadata, không if theo instance ID.
 - Physics QA fix: collider của các part trong cùng machine dùng collision filtering để không tự va chạm với nhau nhưng vẫn va chạm ground/ramp; root spawn là `y=0.75` để wheel radius `0.48` và mount offset `-0.25` bắt đầu sát ground. Solver ưu tiên `axle` của steering hinge khi palette tự chọn candidate đầu tiên.
-- Compile bindings thành runtime actuator map. Test trái/phải được lắp đối xứng nhưng forward cùng đẩy xe theo +Z; steering tôn trọng giới hạn.
+- Compile bindings thành runtime actuator map. Wheel gắn vào steering capability và wheel gắn vào structural mount được chuẩn hóa chiều revolute riêng từ support contract, nên các bên vẫn cùng đẩy xe theo +Z; steering tôn trọng giới hạn.
 - Headless fixture tests trên ground: settle, drive, reverse, steer và không có NaN/joint explosion; thêm ramp để kiểm tra tiếp xúc thật. Mức displacement/yaw tối thiểu được ghi trước khi chốt tuning; không chỉ assert bánh có quay.
+- Sandbox không áp đặt minimum actuator hay root type: một structural core, wheel hoặc hinge đơn lẻ vẫn có thể compile/start/reset; drive/steer thiếu chỉ là control no-op cho tới khi người dùng thêm part.
 
 Checkpoint đạt: headless Rapier test chứng minh forward displacement, reverse displacement và heading change; compiler chỉ nhận blueprint + physics catalog + environment, không import visual factory.
 
@@ -142,11 +143,11 @@ Checkpoint đạt: session fixed 1/60 bounded catch-up; input reset ở keyup/bl
 
 ### Bước 6 — Giao diện chạy bằng npm run dev
 
-- Thay bootstrap placeholder bằng viewport 3D, palette ba parts, inspector selection/config/binding, toolbar Start/Stop/Reset/load sample và trạng thái lỗi thao tác.
+- Thay bootstrap placeholder bằng viewport 3D, palette ba parts, inspector selection/config/binding, toolbar Start/Stop/Reset và bộ chọn sample Scout buggy, Six-wheel hauler, Eight-wheel crawler.
 - Orbit/zoom camera, picking và ghost placement; highlight socket đang chọn. Phím R xoay preview, Escape hủy, Delete xóa selection chỉ trong Building.
-- Load sample phục vụ kiểm tra nhanh; luồng build từ root block trống vẫn đầy đủ. Running khóa commands sửa máy; hiển thị hướng dẫn keyboard.
+- Luồng build hiển thị guide từng bước cho steering, tooltip trên palette/action buttons, cặp socket nguồn/đích trong placement label và socket đích được tô sáng. Load sample phục vụ kiểm tra nhanh; luồng build từ root block trống vẫn đầy đủ. Running khóa commands sửa máy; hiển thị hướng dẫn keyboard.
 - Wire bus/registry/memory/console với cùng sequence source cho Building, assets và simulation; reporter diagnostics dùng cấu hình đã kiểm thử Plan 01. Event viewer tối thiểu có filter/export, lifecycle và command rejection.
-- Event viewer lọc được trực tiếp `input.*` và `physics.*`, nên có thể debug input keydown/keyup, controls áp dụng theo step và tiếp xúc giữa part với ground/ramp từ cùng UI.
+- Event viewer lọc được trực tiếp `input.*` và `physics.*`, nên có thể debug input keydown/keyup, controls áp dụng theo step và tiếp xúc giữa part với ground/ramp từ cùng UI. `simulation.started` ghi thêm tổng actuator, drive actuator và steering actuator để state core-only `bodies:1, joints:0` được hiểu là sandbox no-op hợp lệ.
 - Khi Start/Reset, create/dispose visual ownership rõ; không yêu cầu browser reload giữa hai lần chạy. HMR/app teardown cũng dispose listeners, renderer và session.
 - Không cần backend, API key, Python hoặc checkout img2threejs để chạy source visual đã commit.
 
@@ -156,7 +157,7 @@ Checkpoint đạt: `npm run dev` được mở bằng Chrome thực tế; UI có
 
 - Chạy bài A/B ở mục 4.3 cho cả block, wheel và hinge. Bao gồm model thay đổi local hierarchy để bắt dependency vào tên mesh.
 - Export/import blueprint qua codec hiện có trong test; blueprint trước thay visual vẫn dùng được. UI persistence đầy đủ không bắt buộc ở chặng này.
-- E2E tự lắp qua palette, connect, Start, drive/steer, Reset và re-edit; test fixture shortcut riêng. Không chỉ click Load sample rồi coi editor đã được kiểm chứng.
+- E2E tự lắp qua palette, connect steering theo hướng dẫn/socket label, Start, drive/steer, Reset và re-edit; kiểm tra thêm sample sáu và tám bánh compile/start/reset, frame spacing, displacement/yaw và relative steering rotation của bánh trước. Không chỉ click Load sample rồi coi editor đã được kiểm chứng.
 - Chạy lifecycle ít nhất 20 vòng sau warm-up; active listener/RAF/world counts trở về baseline, renderer memory không tăng tuyến tính; có ảnh và số đo kiểm chứng.
 - Viết `docs/part-model-replacement.md`: file nào thay, file nào giữ, normalize/pivots, provenance, QA commands và cách rollback visual revision.
 - Chạy `npm run part:qa -- core.structural-block`, `core.powered-wheel`, `core.steering-hinge`; `npm run check`; `npm run test:e2e`.
@@ -170,13 +171,15 @@ Checkpoint đạt: `npm run dev` được mở bằng Chrome thực tế; UI có
 | `npm run part:qa -- core.structural-block` | pass: manifest/provenance + 3 manifest/catalog tests |
 | `npm run part:qa -- core.powered-wheel` | pass: manifest/provenance + 3 manifest/catalog tests |
 | `npm run part:qa -- core.steering-hinge` | pass: manifest/provenance + 3 manifest/catalog tests |
-| `npm run test` | pass: 12 files / 79 tests |
-| `npm run check` | pass: typecheck, lint, 12 files / 79 tests, boundary checks và production build |
-| `npm run test:e2e` | pass trên Chrome: tự lắp từ palette với wheel-to-axle layout, giữ W+D có control telemetry và displacement, Reset, A/B, 20 Start/Reset cycles và responsive desktop/tablet/mobile không có page scrollbar |
+| `npm run test` | pass: 13 files / 83 tests |
+| `npm run check` | pass: typecheck, lint, 13 files / 83 tests, boundary checks và production build |
+| `npm run test:e2e` | pass trên Chrome: tự lắp từ palette với guide steering và wheel-to-axle layout, giữ W+D có control telemetry/displacement/yaw và relative front-wheel steering rotation, Reset, A/B, selectable 6/8-wheel samples có drive/steer, core-only và arbitrary-root experiments, 20 Start/Reset cycles và responsive desktop/tablet/mobile không có page scrollbar |
 | event telemetry trong Event Log | pass bằng computer use trên production preview: Start hiện `physics.collision.started` với semantic body IDs; phím W hiện `input.control.changed` cho keydown/keyup; Reset hiện `simulation.reset` và `building.simulation.snapshot-released` |
 | physics stability | pass: sau 90 fixed steps không control, chassis drift mỗi trục < 0.15 m và nghiêng < 0.08 quaternion component; headless drive/steer/reverse pass; collider self-contact đã được loại bỏ |
 | browser computer-use QA | pass trên production preview: Load sample → Start → Reset; sau Reset AX state là BUILDING, active physics worlds `0`, input listeners `0`, blueprint pose giữ `y=0.75` |
-| screenshots | A/B khác SHA, cùng viewport/camera: A `FCCCBEC1BDFE5C42B881DB71C255971AA2DFE711EDAEFF792F383F16543DF62B`, B `C7C762279F6444674285803DB1C6DD2AB318CC747F8D2618138DF3511C432CF3` |
+| computer-use sample/steering QA | pass trực tiếp trên `http://localhost:5173/`: Six-wheel load hiển thị `10 parts · 6 wheels · 2 steering hinges · 9 joints`; Start ghi `bodies:10, joints:9, driveActuators:6, steeringActuators:2`; chuỗi ArrowUp + ArrowRight lọc được `simulation.controls.applied` với `throttle:1, steering:1`; Eight-wheel hiển thị `13 parts · 8 wheels · 2 steering hinges · 12 joints` |
+| computer-use physics startup QA | pass trực tiếp trên Chrome với Eight-wheel: diagnostics giữ root quanh `y=0.73`, frame-middle/frame-tail giữ khoảng cách `2.4 m`; startup chỉ có ground contact `started` ở step 2, không có `collision.stopped` ở step 3; chạy 20 vòng Start/Reset và vòng cuối trở về BUILDING với `simulation.reset`, không tăng world/input listeners |
+| screenshots | A/B khác SHA, cùng viewport/camera: A `E06E4BBC385CAEFF8B654778779896D770C709B9E8381BAF26FBAA5FC0EC54B0`, B `0A6C1BB6FF294E9F1046813AF3ABB44EC6C416F22DB9C03B891CBDC9356A374F` |
 | `npm run dev` | pass: sandbox Build mode mở được và thao tác được trên browser |
 | `npm run part:preview -- core.structural-block` | pass: isolated preview A/B + sockets/colliders/provenance |
 

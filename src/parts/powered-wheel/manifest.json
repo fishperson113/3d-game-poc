@@ -15,7 +15,7 @@
     "colliders": [
       { "shape": "cylinder", "halfHeight": 0.18, "radius": 0.48, "position": [0, 0, 0], "rotation": [0, 0, 1.5707963267948966], "friction": 1.8, "restitution": 0.05 }
     ],
-    "actuator": { "kind": "wheel", "axis": [1, 0, 0], "maxForce": 55, "targetSpeed": 9 }
+    "actuator": { "kind": "wheel", "socketId": "axle", "axis": [1, 0, 0], "maxForce": 32, "targetSpeed": 7 }
   },
   "visual": {
     "factory": "powered-wheel",

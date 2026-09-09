@@ -1,5 +1,5 @@
 import type { PartTransform } from "../../building/domain/contracts";
-import type { Vector3Tuple } from "../../kernel/math";
+import type { QuaternionTuple, Vector3Tuple } from "../../kernel/math";
 import type { PartPhysicsDefinition } from "../../parts/manifest";
 import type { SimulationFrame } from "./simulation-renderer";
 
@@ -23,6 +23,9 @@ export interface PhysicsJointSpec {
   readonly bodyB: string;
   readonly anchorA: Vector3Tuple;
   readonly anchorB: Vector3Tuple;
+  /** Local joint frames used by fixed connections to preserve initial orientation. */
+  readonly frameRotationA?: QuaternionTuple;
+  readonly frameRotationB?: QuaternionTuple;
   readonly axisA?: Vector3Tuple;
   readonly axisB?: Vector3Tuple;
   readonly limits?: readonly [number, number];
@@ -55,6 +58,7 @@ export interface PhysicsWorldStats {
   readonly bodies: number;
   readonly joints: number;
   readonly steps: number;
+  readonly bodyMasses?: Readonly<Record<string, number>>;
 }
 
 export interface PhysicsWorld {

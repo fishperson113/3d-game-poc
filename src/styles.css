@@ -22,6 +22,7 @@ button, input, select { font: inherit; }
 button { border: 1px solid var(--line); color: #dcebe5; background: #162727; border-radius: 4px; padding: .62rem .85rem; cursor: pointer; transition: border-color .15s, background .15s, transform .15s; }
 button:hover:not(:disabled) { border-color: var(--mint); background: #1a3534; transform: translateY(-1px); }
 button:disabled { cursor: not-allowed; opacity: .38; }
+select:disabled { cursor: not-allowed; opacity: .48; }
 .sandbox-shell { display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; padding: clamp(.65rem, 1.5vw, 1.15rem) clamp(.7rem, 2vw, 1.35rem) clamp(.7rem, 1.5vw, 1.35rem); overflow: hidden; }
 .topbar { display: flex; justify-content: space-between; align-items: end; gap: 2rem; padding: .6rem .25rem 1.1rem; }
 .eyebrow { margin: 0 0 .38rem; color: var(--mint); font: 700 .68rem/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .16em; }
@@ -33,6 +34,8 @@ h1 { margin: 0; font: 700 clamp(2.25rem, 4vw, 4.2rem)/.9 Georgia, serif; letter-
 .toolbar { display: flex; flex: 0 0 auto; align-items: center; gap: .5rem; min-width: 0; padding: .7rem; border: 1px solid var(--line); border-bottom: 0; background: rgba(15, 28, 29, .9); }
 .toolbar .primary { color: #09201c; border-color: var(--mint); background: var(--mint); font-weight: 800; }
 .toolbar-hint { margin-left: auto; color: var(--muted); font-size: .76rem; }
+.sample-picker { display: flex; align-items: center; gap: .35rem; color: var(--muted); font: 700 .62rem/1 "IBM Plex Mono", ui-monospace, monospace; text-transform: uppercase; letter-spacing: .08em; }
+.sample-picker select { max-width: 15rem; padding: .48rem .45rem; border: 1px solid var(--line); color: #dcebe5; background: #0c1617; border-radius: 3px; font-size: .7rem; text-transform: none; letter-spacing: 0; }
 .sandbox-grid { display: grid; flex: 1 1 auto; grid-template-columns: minmax(210px, 265px) minmax(0, 1fr) minmax(240px, 335px); min-width: 0; min-height: 0; overflow: hidden; border: 1px solid var(--line); background: #0b1516; }
 .panel { min-width: 0; min-height: 0; padding: 1rem; overflow: auto; scrollbar-width: none; background: var(--panel); }
 .panel::-webkit-scrollbar, .events::-webkit-scrollbar { display: none; }
@@ -51,6 +54,11 @@ h1 { margin: 0; font: 700 clamp(2.25rem, 4vw, 4.2rem)/.9 Georgia, serif; letter-
 .swatch-structural-block { background: #537988; }
 .swatch-powered-wheel { border-radius: 99px; background: #273237; }
 .swatch-steering-hinge { background: #c18b50; }
+.assembly-guide { margin-top: 1rem; border: 1px solid #294242; background: #0c1819; }
+.assembly-guide summary { padding: .65rem .7rem; cursor: pointer; color: var(--mint); font: 800 .68rem/1.2 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; }
+.assembly-guide > div { display: grid; gap: .45rem; padding: 0 .7rem .7rem; }
+.guide-step { display: grid; grid-template-columns: 1.4rem minmax(0, 1fr); gap: .45rem; color: var(--muted); font-size: .7rem; line-height: 1.35; }
+.guide-step b { color: var(--orange); font: 700 .65rem "IBM Plex Mono", ui-monospace, monospace; }
 .inspector { min-height: 8rem; padding: .75rem; border: 1px solid var(--line); background: #0c1617; font-size: .75rem; }
 .inspector.empty { display: grid; place-items: center; color: var(--muted); text-align: center; }
 .part-id { color: var(--mint); font: 700 .7rem/1.4 "IBM Plex Mono", ui-monospace, monospace; overflow-wrap: anywhere; }
@@ -91,6 +99,7 @@ h1 { margin: 0; font: 700 clamp(2.25rem, 4vw, 4.2rem)/.9 Georgia, serif; letter-
   .sandbox-grid { grid-template-columns: minmax(190px, 24vw) minmax(0, 1fr) minmax(220px, 27vw); }
   .toolbar-hint { display: none; }
   .panel { padding: .8rem; }
+  .sample-picker select { max-width: 11rem; }
 }
 @media (max-width: 900px) {
   .topbar { align-items: flex-start; gap: 1rem; padding-bottom: .7rem; }
@@ -111,6 +120,8 @@ h1 { margin: 0; font: 700 clamp(2.25rem, 4vw, 4.2rem)/.9 Georgia, serif; letter-
   .physics-chip { padding: .35rem .45rem; }
   .toolbar { flex-wrap: wrap; padding: .5rem; }
   .toolbar button { flex: 1 1 auto; padding: .5rem .55rem; font-size: .75rem; }
+  .sample-picker { flex: 1 1 100%; justify-content: space-between; }
+  .sample-picker select { flex: 1; max-width: none; }
   .sandbox-grid { grid-template-columns: 1fr; grid-template-rows: minmax(0, .9fr) minmax(0, 1.25fr) minmax(0, .8fr); }
   .left-panel { grid-column: 1; grid-row: 1; border-right: 0; border-bottom: 1px solid var(--line); }
   .viewport-panel { grid-column: 1; grid-row: 2; }

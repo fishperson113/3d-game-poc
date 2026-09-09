@@ -7,3 +7,5 @@ export type { ControlState, InputSource } from "./ports/input-source";
 export type { RuntimeTelemetryEvent, RuntimeTelemetrySeverity, RuntimeTelemetrySink } from "./ports/runtime-telemetry";
 export type { SimulationFrame, SimulationRenderer } from "./ports/simulation-renderer";
 export { createRuntimeFourWheelFixture } from "./fixtures/runtime-four-wheel";
+export { createRuntimeSampleFixture, RUNTIME_SAMPLES, sampleDefinition } from "./fixtures/runtime-samples";
+export type { RuntimeSampleDefinition, RuntimeSampleId } from "./fixtures/runtime-samples";

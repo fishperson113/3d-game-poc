@@ -1,6 +1,6 @@
 import * as RAPIER from "@dimforge/rapier3d-compat";
 import { FIXED_TIMESTEP_SECONDS } from "../../kernel/runtime-contract";
-import { quaternionFromEuler, type TransformSnapshot } from "../../kernel/math";
+import { quaternionFromEuler, quaternionMultiply, quaternionConjugate, type TransformSnapshot } from "../../kernel/math";
 import type { SimulationFrame } from "../../simulation/ports/simulation-renderer";
 import type { PhysicsActuatorSpec, PhysicsJointSpec, PhysicsSpecification, PhysicsWorld, PhysicsWorldStats } from "../../simulation/ports/physics-world";
 import type { RuntimeTelemetrySink } from "../../simulation/ports/runtime-telemetry";
@@ -43,6 +43,7 @@ export class RapierPhysicsWorld implements PhysicsWorld {
   private readonly telemetry: RuntimeTelemetrySink | undefined;
   private eventQueue: RAPIER.EventQueue | undefined;
   private controls = { throttle: 0, steering: 0 };
+  private appliedControls = { throttle: 0, steering: 0 };
   private stepCount = 0;
 
   public constructor(options: RapierPhysicsWorldOptions = {}) {
@@ -54,7 +55,9 @@ export class RapierPhysicsWorld implements PhysicsWorld {
     const world = new RAPIER.World(vector(specification.environment.gravity));
     const eventQueue = new RAPIER.EventQueue(true);
     world.timestep = FIXED_TIMESTEP_SECONDS;
-    world.numSolverIterations = 8;
+    // Long articulated machines need more constraint passes than the Rapier
+    // default to keep fixed and revolute anchors together during reversals.
+    world.numSolverIterations = 12;
     try {
       this.createEnvironment(world, specification);
       for (const bodySpec of specification.bodies) {
@@ -62,11 +65,10 @@ export class RapierPhysicsWorld implements PhysicsWorld {
         const descriptor = RAPIER.RigidBodyDesc.dynamic()
           .setTranslation(bodySpec.transform.position[0], bodySpec.transform.position[1], bodySpec.transform.position[2])
           .setRotation(rotation(bodyRotation))
-          .setAdditionalMass(bodySpec.physics.body.mass)
           .setLinearDamping(bodySpec.physics.body.linearDamping)
           .setAngularDamping(bodySpec.physics.body.angularDamping)
-          .setCanSleep(false)
-          .setCcdEnabled(bodySpec.id.includes("wheel"));
+          .setCanSleep(true)
+          .setCcdEnabled(true);
         const body = world.createRigidBody(descriptor);
         body.userData = { partId: bodySpec.id };
         this.bodies.set(bodySpec.id, body);
@@ -80,11 +82,14 @@ export class RapierPhysicsWorld implements PhysicsWorld {
             if (collider.halfHeight === undefined || collider.radius === undefined) throw new Error("simulation.collider.missing-cylinder-size");
             descriptorCollider = RAPIER.ColliderDesc.cylinder(collider.halfHeight, collider.radius);
           }
-          // Part bodies share the same machine and should not collide with one
-          // another. They still collide with the default-group ground/ramp.
-          // Without this filter, a wheel intersecting the chassis produces
-          // artificial torque through contacts that are outside its joint.
-          descriptorCollider.setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS).setCollisionGroups(0x00020001);
+          // Only directly joined pairs disable contacts (in createJoint).
+          // Distribute the authoritative total mass by collider volume.
+          const volume = (shape: typeof collider): number => shape.shape === "cuboid"
+            ? 8 * (shape.halfExtents?.[0] ?? 0) * (shape.halfExtents?.[1] ?? 0) * (shape.halfExtents?.[2] ?? 0)
+            : 2 * Math.PI * (shape.radius ?? 0) ** 2 * (shape.halfHeight ?? 0);
+          const totalVolume = bodySpec.physics.colliders.reduce((sum, shape) => sum + volume(shape), 0);
+          descriptorCollider.setMass(bodySpec.physics.body.mass * volume(collider) / totalVolume);
+          descriptorCollider.setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
           descriptorCollider.setTranslation(collider.position[0], collider.position[1], collider.position[2]);
           descriptorCollider.setRotation(rotation(quaternionFromEuler(collider.rotation)));
           descriptorCollider.setFriction(collider.friction).setRestitution(collider.restitution);
@@ -109,27 +114,36 @@ export class RapierPhysicsWorld implements PhysicsWorld {
   }
 
   public setControls(control: { readonly throttle: number; readonly steering: number }): void {
-    this.controls = { throttle: Math.max(-1, Math.min(1, control.throttle)), steering: Math.max(-1, Math.min(1, control.steering)) };
+    const normalized = (value: number): number => Number.isFinite(value) ? Math.max(-1, Math.min(1, value)) : 0;
+    this.controls = { throttle: normalized(control.throttle), steering: normalized(control.steering) };
+  }
+
+  private applyMotors(timestepSeconds: number): void {
+    const approach = (current: number, target: number, rate: number): number => current + Math.max(-rate * timestepSeconds, Math.min(rate * timestepSeconds, target - current));
+    this.appliedControls.throttle = approach(this.appliedControls.throttle, this.controls.throttle, 2.5);
+    this.appliedControls.steering = approach(this.appliedControls.steering, this.controls.steering, 3);
     for (const actuator of this.actuators.values()) {
       const joint = this.joints.get(actuator.jointId);
       if (joint === undefined) continue;
       const revolute = joint as RAPIER.RevoluteImpulseJoint;
       if (actuator.action === "drive") {
-        revolute.configureMotorVelocity(this.controls.throttle * actuator.targetSpeed * actuator.motorSign, 5);
-        revolute.setMotorMaxForce(actuator.maxForce);
+        revolute.configureMotorVelocity(this.appliedControls.throttle * actuator.targetSpeed * actuator.motorSign, 5);
+        // Releasing throttle coasts; reverse input actively brakes/reverses.
+        revolute.setMotorMaxForce(this.controls.throttle === 0 ? 0 : actuator.maxForce);
       } else {
-        const target = this.controls.steering * (actuator.limitRadians ?? 0.6);
+        const target = this.appliedControls.steering * actuator.motorSign * (actuator.limitRadians ?? 0.6);
         revolute.configureMotorPosition(target, actuator.steeringStiffness ?? 80, actuator.steeringDamping ?? 8);
         revolute.setMotorMaxForce(actuator.maxForce);
-        if (actuator.limitRadians !== undefined) revolute.setLimits(-actuator.limitRadians, actuator.limitRadians);
       }
+      if (this.controls.throttle !== 0 || this.controls.steering !== 0) { joint.body1().wakeUp(); joint.body2().wakeUp(); }
     }
   }
 
   public step(timestepSeconds: number): void {
     if (this.world === undefined) return;
+    if (!Number.isFinite(timestepSeconds) || timestepSeconds <= 0) throw new Error("simulation.timestep.invalid");
     this.world.timestep = timestepSeconds;
-    this.setControls(this.controls);
+    this.applyMotors(timestepSeconds);
     this.world.step(this.eventQueue);
     this.stepCount += 1;
     this.eventQueue?.drainCollisionEvents((handleA, handleB, started) => {
@@ -139,6 +153,14 @@ export class RapierPhysicsWorld implements PhysicsWorld {
       const labels = [labelA, labelB].sort();
       this.publish({ type: started ? "physics.collision.started" : "physics.collision.stopped", payload: { bodyA: labels[0] ?? labelA, bodyB: labels[1] ?? labelB, phase: started ? "started" : "stopped", physicsStep: this.stepCount }, severity: "debug", tags: ["physics", "physics.collision"] });
     });
+    if (this.stepCount % 60 === 0) {
+      const root = this.bodies.entries().next().value;
+      if (root !== undefined) {
+        const velocity = root[1].linvel();
+        const pose = snapshotBody(root[1]);
+        this.publish({ type: "simulation.physics.sample", payload: { physicsStep: this.stepCount, partId: root[0], position: [...pose.position], rotation: [...pose.rotation], speed: Math.hypot(velocity.x, velocity.y, velocity.z), throttle: this.appliedControls.throttle, steering: this.appliedControls.steering }, tags: ["simulation", "physics.summary"], severity: "debug" });
+      }
+    }
   }
 
   public snapshot(): SimulationFrame {
@@ -148,7 +170,7 @@ export class RapierPhysicsWorld implements PhysicsWorld {
   }
 
   public getStats(): PhysicsWorldStats {
-    return { bodies: this.bodies.size, joints: this.joints.size, steps: this.stepCount };
+    return { bodies: this.bodies.size, joints: this.joints.size, steps: this.stepCount, bodyMasses: Object.fromEntries([...this.bodies].map(([id, body]) => [id, body.mass()])) };
   }
 
   public dispose(): void {
@@ -166,6 +188,7 @@ export class RapierPhysicsWorld implements PhysicsWorld {
     this.colliderLabels.clear();
     this.actuators.clear();
     this.controls = { throttle: 0, steering: 0 };
+    this.appliedControls = { throttle: 0, steering: 0 };
     this.stepCount = 0;
   }
 
@@ -189,9 +212,18 @@ export class RapierPhysicsWorld implements PhysicsWorld {
     const anchorA = vector(spec.anchorA);
     const anchorB = vector(spec.anchorB);
     const jointData = spec.type === "fixed"
-      ? RAPIER.JointData.fixed(anchorA, RAPIER.RotationOps.identity(), anchorB, RAPIER.RotationOps.identity())
+      ? RAPIER.JointData.fixed(anchorA, rotation(spec.frameRotationA ?? [0, 0, 0, 1]), anchorB, rotation(spec.frameRotationB ?? [0, 0, 0, 1]))
       : RAPIER.JointData.revoluteWithAxes(anchorA, anchorB, vector(spec.axisA ?? [1, 0, 0]), vector(spec.axisB ?? [1, 0, 0]));
     const joint = world.createImpulseJoint(jointData, bodyA, bodyB, true);
+    if (spec.type === "revolute") {
+      // Rapier's independent axes do not capture the initial twist angle.
+      // Make both joint frames coincide in world space at the build pose,
+      // preserving frame A's free X axis and defining neutral as zero.
+      const a = bodyA.rotation(); const b = bodyB.rotation(); const frame = joint.frameX1();
+      const neutralB = quaternionMultiply(quaternionConjugate([b.x, b.y, b.z, b.w]), quaternionMultiply([a.x, a.y, a.z, a.w], [frame.x, frame.y, frame.z, frame.w]));
+      joint.setFrameX2(rotation(neutralB));
+      (joint as RAPIER.RevoluteImpulseJoint).configureMotorModel(RAPIER.MotorModel.ForceBased);
+    }
     joint.setContactsEnabled(spec.contactsEnabled);
     if (spec.limits !== undefined && spec.type === "revolute") (joint as RAPIER.RevoluteImpulseJoint).setLimits(spec.limits[0], spec.limits[1]);
     this.joints.set(spec.id, joint);
