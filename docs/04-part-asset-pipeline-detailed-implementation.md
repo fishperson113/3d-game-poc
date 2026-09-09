@@ -167,7 +167,7 @@ Checkpoint đạt: `npm run dev` được mở bằng Chrome thực tế; UI có
 | `npm run part:qa -- core.powered-wheel` | pass: manifest/provenance + 3 manifest/catalog tests |
 | `npm run part:qa -- core.steering-hinge` | pass: manifest/provenance + 3 manifest/catalog tests |
 | `npm run test` | pass: 11 files / 78 tests |
-| `npm run test:e2e` | pass trên Chrome: self-assembly, drive/steer, Reset, A/B, 20 Start/Reset cycles |
+| `npm run test:e2e` | pass trên Chrome: self-assembly, drive/steer, Reset, A/B, 20 Start/Reset cycles và responsive desktop/tablet/mobile không có page scrollbar |
 | screenshots | A/B khác SHA, cùng viewport/camera: A `91A0F5537181C7032120134D7EF3DDC04CB11DB5BAB4D16ECFC076FFE47C6765`, B `D28673D63CBF5D834DBE49916E76468DFE678E4F27E6A4F1D81B0221325A44A7` |
 | `npm run dev` | pass: sandbox Build mode mở được và thao tác được trên browser |
 | `npm run part:preview -- core.structural-block` | pass: isolated preview A/B + sockets/colliders/provenance |
