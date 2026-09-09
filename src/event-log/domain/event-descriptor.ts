@@ -7,5 +7,3 @@ export interface EventDescriptor<TPayload = JsonValue> {
   summarize(payload: TPayload): string;
   redact?(payload: TPayload): JsonValue;
 }
-
-// TODO(plan-01): Add upcaster registration without a central event union.

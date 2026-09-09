@@ -1,3 +1,10 @@
 export { EventLogService } from "./application/event-log-service";
+export type { EventLogDiagnostic, EventLogServiceOptions } from "./application/event-log-service";
+export { exportEventLogSnapshot, EVENT_LOG_EXPORT_SCHEMA_VERSION } from "./application/event-log-export";
+export type { EventLogExportSnapshot } from "./application/event-log-export";
 export type { EventDescriptor } from "./domain/event-descriptor";
+export { EventSchemaRegistry } from "./domain/event-schema-registry";
+export type { EventProjection, EventUpcaster } from "./domain/event-schema-registry";
+export { filterEvents, validateEventLogFilter } from "./domain/event-log-query";
+export type { EventLogFilter, EventLogQueryResult, EventLogQuerySource, EventLogRetentionMetadata, EventSeverity, TagMatchMode } from "./domain/event-log-query";
 export type { EventLogSink } from "./ports/event-log-sink";
