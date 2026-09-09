@@ -1,5 +1,7 @@
 # Plan 01 — Event log foundation
 
+**Status: CLOSED** · Verified 2026-09-09 with `npm run check`.
+
 ## Outcome
 
 Xây event bus namespaced, schema registry/upcaster, console sink, ring-buffer sink và API query cho debug viewer. Module chạy hoàn toàn trong Node tests, không phụ thuộc DOM, Three.js, Rapier hoặc các domain implementation khác.
@@ -32,5 +34,6 @@ Không sửa Building, Challenge, Simulation hoặc UI. Các module khác chỉ 
 
 - Command/result có thể chia sẻ correlation ID và causation chain.
 - Sequence tăng đơn điệu; subscriber lỗi không ngăn subscriber khác và tạo diagnostic an toàn, không recursion vô hạn.
+- Diagnostic dùng reporter chung có suppression counter đọc được; khi được cấu hình factory, diagnostic envelope dùng shared sequence, giữ correlation của event nguồn và trỏ causation tới event gây lỗi.
 - Payload cyclic/non-JSON-safe bị reject với error code tìm kiếm được.
 - Tất cả tests chạy bằng Vitest Node; `npm run check` pass.

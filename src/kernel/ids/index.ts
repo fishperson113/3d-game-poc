@@ -4,4 +4,6 @@ export type CorrelationId = Brand<string, "CorrelationId">;
 export type MachineId = Brand<string, "MachineId">;
 export type SimulationSessionId = Brand<string, "SimulationSessionId">;
 
-// TODO(plan-01): Add injectable ID factories and UUID validation.
+// Event IDs and correlation IDs are generated at the event boundary. The
+// envelope factory accepts injectable generators so this shared type module
+// remains free of runtime dependencies.
