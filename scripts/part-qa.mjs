@@ -14,6 +14,10 @@ const commands = [
 ];
 
 for (const args of commands) {
-  const result = spawnSync(npmCommand, args, { stdio: "inherit" });
+  const result = spawnSync(npmCommand, args, { stdio: "inherit", shell: process.platform === "win32" });
+  if (result.error) {
+    console.error(`Part QA command failed to start: ${result.error.message}`);
+    process.exit(1);
+  }
   if (result.status !== 0) process.exit(result.status ?? 1);
 }

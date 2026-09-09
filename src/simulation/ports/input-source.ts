@@ -5,5 +5,6 @@ export interface ControlState {
 
 export interface InputSource {
   read(): ControlState;
+  reset?(): void;
   dispose(): void;
 }

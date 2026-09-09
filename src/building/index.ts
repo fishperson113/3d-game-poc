@@ -3,7 +3,9 @@ export type { Connection, ConnectionId, ConnectionInput, ControlBinding, Control
 export type { ConfigurationField, ConfigurationFieldType, ConfigurationValidation, PartConfigurationSchema, PartDefinition, SocketDefinition } from "./domain/part-definition";
 export { normalizePartConfiguration } from "./domain/part-definition";
 export { Machine } from "./domain/machine";
-export type { AddPartInput, MachineChange, MachineDependencies } from "./domain/machine";
+export type { AddPartInput, MachineChange, MachineDependencies, PlaceAndConnectInput } from "./domain/machine";
+export { createPlacementPreview, findPlacementCandidates, getSocketFrame, rootTransform, rotatePlacementCandidate } from "./application/assembly-solver";
+export type { AssemblyPlacementCandidate, AssemblyPlacementPreview } from "./application/assembly-solver";
 export { exportMachineBlueprint, parseMachineBlueprint, validateBlueprintSemantics } from "./domain/blueprint";
 export type { BlueprintCatalog, BlueprintValidationError } from "./domain/blueprint";
 export { MachineBuildingService } from "./application/machine-building-service";

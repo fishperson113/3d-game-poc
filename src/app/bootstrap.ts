@@ -1,19 +1,21 @@
-import { APP_NAME, FIXED_TIMESTEP_SECONDS } from "../kernel/runtime-contract";
+import { APP_NAME } from "../kernel/runtime-contract";
+import { initializeRapier } from "../adapters/rapier/rapier-physics-world";
 import { createApplicationComposition } from "./composition-root";
-import { AppView } from "./ui/app-view";
+import { SandboxApplication } from "./sandbox-application";
+import { PartPreviewApplication } from "./part-preview-application";
 
 export function bootstrapApplication(host: HTMLElement): void {
-  const composition = createApplicationComposition();
-  const view = new AppView(host);
-  host.innerHTML = `
-    <section class="shell" aria-labelledby="app-title">
-      <p class="eyebrow">Walking skeleton</p>
-      <h1 id="app-title">${APP_NAME}</h1>
-      <p>Module boundaries and content contracts are ready for parallel implementation.</p>
-      <dl><div><dt>Mode</dt><dd>LoadingChallenge</dd></div><div><dt>Physics step</dt><dd>1/${String(1 / FIXED_TIMESTEP_SECONDS)} s</dd></div></dl>
-    </section>`;
-  view.render({ state: "LoadingChallenge" });
-
-  // TODO(plan-05): Mount controllers and transition to Building after level load.
-  void composition;
+  host.setAttribute("aria-label", APP_NAME);
+  void initializeRapier().then(async () => {
+    const composition = createApplicationComposition();
+    const previewPartId = (import.meta.env as Record<string, string | undefined>).VITE_PART_PREVIEW_ID;
+    const application = import.meta.env.MODE === "part-preview" && previewPartId !== undefined
+      ? new PartPreviewApplication(host, composition, previewPartId)
+      : new SandboxApplication(host, composition);
+    if (application instanceof SandboxApplication) await application.initialize();
+    window.addEventListener("beforeunload", () => { void application.dispose(); }, { once: true });
+    if (import.meta.hot) import.meta.hot.dispose(() => { void application.dispose(); });
+  }).catch((error: unknown) => {
+    host.innerHTML = `<section class="boot-error"><p class="eyebrow">BOOT ERROR</p><h1>Rapier could not initialize</h1><p>${error instanceof Error ? error.message : String(error)}</p></section>`;
+  });
 }

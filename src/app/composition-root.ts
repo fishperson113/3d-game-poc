@@ -1,56 +1,52 @@
-import {
-  BundledLevelRepository,
-  ConsoleEventLogSink,
-  KeyboardInputSource,
-  MemoryMachineRepository,
-  RapierPhysicsWorld,
-  ThreeSimulationRenderer,
-} from "../adapters";
+import { ConsoleEventLogSink, KeyboardInputSource, MemoryEventLogSink, MemoryMachineRepository, RapierPhysicsWorld } from "../adapters";
 import { MachineBuildingService } from "../building";
-import { LoadLevel } from "../challenge";
 import { EventLogService } from "../event-log";
-import type { EventEnvelope, EventPublisher } from "../kernel/events/contracts";
+import { EventEnvelopeFactory, createEventSequenceSource, NamespacedEventBus, type EventEnvelope } from "../kernel/events";
 import { StaticPartCatalog } from "../parts";
 import { SimulationCompiler, SimulationSession } from "../simulation";
-
-class ScaffoldEventPublisher implements EventPublisher {
-  public publish(event: EventEnvelope): void {
-    // TODO(plan-01): Replace with the namespaced in-process event bus.
-    void event;
-  }
-
-  public subscribe(pattern: string, handler: (event: EventEnvelope) => void): () => void {
-    // TODO(plan-01): Implement exact and wildcard subscriptions.
-    void pattern;
-    void handler;
-    return () => undefined;
-  }
-}
+import type { PhysicsWorld } from "../simulation";
+import type { SimulationRenderer } from "../simulation/ports/simulation-renderer";
+import type { JsonValue } from "../kernel/json";
 
 export interface ApplicationComposition {
   readonly building: MachineBuildingService;
-  readonly loadLevel: LoadLevel;
+  readonly catalog: StaticPartCatalog;
   readonly simulationCompiler: SimulationCompiler;
+  readonly events: NamespacedEventBus;
+  readonly eventFactory: EventEnvelopeFactory;
   readonly eventLog: EventLogService;
-  createSimulationSession(): SimulationSession;
+  readonly memoryLog: MemoryEventLogSink;
+  createSimulationSession(world: PhysicsWorld, renderer: SimulationRenderer): SimulationSession;
+  emit(type: string, payload: JsonValue, severity?: EventEnvelope["severity"]): void;
 }
 
 export function createApplicationComposition(): ApplicationComposition {
-  const events = new ScaffoldEventPublisher();
-  const eventLog = new EventLogService([new ConsoleEventLogSink()]);
-  const building = new MachineBuildingService(new MemoryMachineRepository(), new StaticPartCatalog(), events);
-  const loadLevel = new LoadLevel(new BundledLevelRepository(), events);
-  const simulationCompiler = new SimulationCompiler({ createPhysicsWorld: () => new RapierPhysicsWorld(), events });
-
+  const sequence = createEventSequenceSource();
+  const eventFactory = new EventEnvelopeFactory({ sequence, producer: "sandbox.application" });
+  const memoryLog = new MemoryEventLogSink({ capacity: 1500 });
+  const eventLog = new EventLogService([memoryLog, new ConsoleEventLogSink()]);
+  const events = new NamespacedEventBus();
+  events.subscribe("*", (event) => { eventLog.record(event); });
+  const catalog = new StaticPartCatalog();
+  const building = new MachineBuildingService(new MemoryMachineRepository(), catalog, events, {
+    id: () => eventFactory.startCorrelation(),
+    now: () => new Date().toISOString(),
+    producer: "sandbox.building",
+    sequence: () => sequence.next(),
+  });
+  const simulationCompiler = new SimulationCompiler({ createPhysicsWorld: () => new RapierPhysicsWorld(), catalog, events });
   return {
     building,
-    loadLevel,
+    catalog,
     simulationCompiler,
+    events,
+    eventFactory,
     eventLog,
-    createSimulationSession: () => new SimulationSession(
-      new RapierPhysicsWorld(),
-      new KeyboardInputSource(),
-      new ThreeSimulationRenderer(),
-    ),
+    memoryLog,
+    createSimulationSession: (world, renderer) => new SimulationSession(world, new KeyboardInputSource(), renderer),
+    emit: (type, payload, severity = "info") => {
+      const created = eventFactory.create({ type, eventVersion: 1, severity, correlationId: eventFactory.startCorrelation(), payload });
+      if (created.ok) events.publish(created.value);
+    },
   };
 }

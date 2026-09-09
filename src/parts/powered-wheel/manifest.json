@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "kind": "core.part",
+  "id": "core.powered-wheel",
+  "revision": 1,
+  "assembly": {
+    "sockets": [
+      { "id": "axle", "accepts": ["mount", "axle"], "tags": ["mount", "axle"], "position": [0, 0, 0], "rotation": [0, 0, 0] }
+    ],
+    "capabilities": ["core.motor-wheel"],
+    "configurationSchema": { "fields": { "motorTorque": { "type": "number", "default": 32, "min": 0, "max": 100 } } }
+  },
+  "physics": {
+    "body": { "mass": 1.2, "linearDamping": 0.15, "angularDamping": 0.25 },
+    "colliders": [
+      { "shape": "cylinder", "halfHeight": 0.18, "radius": 0.48, "position": [0, 0, 0], "rotation": [0, 0, 1.5707963267948966], "friction": 1.8, "restitution": 0.05 }
+    ],
+    "actuator": { "kind": "wheel", "axis": [1, 0, 0], "maxForce": 55, "targetSpeed": 9 }
+  },
+  "visual": {
+    "factory": "powered-wheel",
+    "revision": 1,
+    "source": "procedural-brief",
+    "sourceCommit": "6e60b5e22419464b4853e01ddb6c0e6f6659a733",
+    "normalization": { "metersPerUnit": 1, "upAxis": "y", "forwardAxis": "z", "origin": "part-frame" },
+    "variants": [
+      { "id": "A", "label": "Rubber wheel", "factory": "powered-wheel" },
+      { "id": "B", "label": "Spoked wheel", "factory": "powered-wheel" }
+    ]
+  },
+  "provenance": { "brief": "art-source/parts/powered-wheel/brief.md", "license": "Internal procedural design brief", "toolCommit": "6e60b5e22419464b4853e01ddb6c0e6f6659a733" }
+}

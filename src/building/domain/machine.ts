@@ -15,6 +15,12 @@ export interface AddPartInput {
   readonly configuration?: Readonly<Record<string, JsonValue>>;
 }
 
+export interface PlaceAndConnectInput {
+  readonly part: AddPartInput;
+  readonly connection: ConnectionInput;
+  readonly bindings?: readonly ControlBindingInput[];
+}
+
 export interface MachineChange {
   readonly events: readonly DomainEvent[];
   readonly blueprint: MachineBlueprint;
@@ -170,6 +176,29 @@ export class Machine {
     };
     this.state = { ...this.state, version: this.state.version + 1, parts: [...this.state.parts, part] };
     return this.changed(event("building.part.added", { machineId: this.state.id, partId: part.id, definitionId: part.definitionId }));
+  }
+
+  public placeAndConnect(input: PlaceAndConnectInput): Result<MachineChange, MachineCommandError> {
+    const before = cloneBlueprint(this.state);
+    const events: DomainEvent[] = [];
+    const added = this.addPart(input.part);
+    if (!added.ok) return added;
+    events.push(...added.value.events);
+    const connected = this.connectParts(input.connection);
+    if (!connected.ok) {
+      this.state = before;
+      return connected;
+    }
+    events.push(...connected.value.events);
+    for (const binding of input.bindings ?? []) {
+      const bound = this.bindControl(binding);
+      if (!bound.ok) {
+        this.state = before;
+        return bound;
+      }
+      events.push(...bound.value.events);
+    }
+    return { ok: true, value: { events, blueprint: this.blueprint } };
   }
 
   public removePart(partId: string): Result<MachineChange, MachineCommandError> {
