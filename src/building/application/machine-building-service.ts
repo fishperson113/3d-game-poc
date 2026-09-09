@@ -1,7 +1,7 @@
 import type { EventEnvelope, EventPublisher } from "../../kernel/events/contracts";
 import type { JsonValue } from "../../kernel/json";
 import type { Result } from "../../kernel/result";
-import { Machine, type AddPartInput, type MachineChange, type MachineDependencies } from "../domain/machine";
+import { Machine, type AddPartInput, type MachineChange, type MachineDependencies, type PlaceAndConnectInput } from "../domain/machine";
 import type { ConnectionInput, ControlBindingInput, DomainEvent, MachineBlueprint, MachineCommandError, PartTransform, RotationAxis } from "../domain/contracts";
 import { parseMachineBlueprint } from "../domain/blueprint";
 import type { MachineRepository } from "../ports/machine-repository";
@@ -14,6 +14,7 @@ export interface BuildingCommandError {
 
 export type BuildingCommand =
   | { readonly type: "add-part"; readonly part: AddPartInput }
+  | { readonly type: "place-and-connect"; readonly placement: PlaceAndConnectInput }
   | { readonly type: "remove-part"; readonly partId: string }
   | { readonly type: "move-part"; readonly partId: string; readonly transform: PartTransform }
   | { readonly type: "rotate-part"; readonly partId: string; readonly axis: RotationAxis; readonly steps?: number }
@@ -68,6 +69,21 @@ export class MachineBuildingService {
 
   public load(machineId: string, correlationId = this.eventOptions.id()): Promise<Result<MachineBlueprint, BuildingCommandError>> {
     return this.enqueue(machineId, () => this.loadNow(machineId, correlationId));
+  }
+
+  public replace(machineId: string, blueprint: MachineBlueprint, correlationId = this.eventOptions.id()): Promise<Result<MachineBlueprint, BuildingCommandError>> {
+    return this.enqueue(machineId, async () => {
+      if (this.simulationLocks.has(machineId) || !await this.canEdit(machineId)) return { ok: false, error: { code: "building.mode.invalid" } };
+      const current = await this.repository.get(machineId);
+      if (current === undefined) return { ok: false, error: { code: "building.machine.not-found" } };
+      const candidate = { ...blueprint, id: current.id, version: current.version + 1 };
+      const parsed = parseMachineBlueprint(candidate, this.dependencies());
+      if (!parsed.ok) return { ok: false, error: { code: parsed.error.code, ...(parsed.error.path === undefined ? {} : { details: { path: parsed.error.path } }) } };
+      const saved = await this.repository.save(parsed.value, current.version);
+      if (!saved.ok) return { ok: false, error: { code: saved.code } };
+      this.publishApplicationEvent("building.machine.replaced", machineId, correlationId, { version: parsed.value.version }, "info");
+      return { ok: true, value: parsed.value };
+    });
   }
 
   public acquireSimulationSnapshot(machineId: string, correlationId = this.eventOptions.id()): Promise<Result<MachineBlueprint, BuildingCommandError>> {
@@ -209,6 +225,7 @@ export class MachineBuildingService {
   }
 
   public addPart(machineId: string, part: AddPartInput, correlationId?: string) { return this.execute(machineId, { type: "add-part", part }, correlationId); }
+  public placeAndConnect(machineId: string, placement: PlaceAndConnectInput, correlationId?: string) { return this.execute(machineId, { type: "place-and-connect", placement }, correlationId); }
   public removePart(machineId: string, partId: string, correlationId?: string) { return this.execute(machineId, { type: "remove-part", partId }, correlationId); }
   public movePart(machineId: string, partId: string, transform: PartTransform, correlationId?: string) { return this.execute(machineId, { type: "move-part", partId, transform }, correlationId); }
   public rotatePart(machineId: string, partId: string, axis: RotationAxis, steps = 1, correlationId?: string) { return this.execute(machineId, { type: "rotate-part", partId, axis, steps }, correlationId); }
@@ -224,6 +241,7 @@ export class MachineBuildingService {
   private apply(machine: Machine, command: BuildingCommand): Result<MachineChange, MachineCommandError> {
     switch (command.type) {
       case "add-part": return machine.addPart(command.part);
+      case "place-and-connect": return machine.placeAndConnect(command.placement);
       case "remove-part": return machine.removePart(command.partId);
       case "move-part": return machine.movePart(command.partId, command.transform);
       case "rotate-part": return machine.rotatePart(command.partId, command.axis, command.steps);

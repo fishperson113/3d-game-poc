@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "kind": "core.part",
+  "id": "core.structural-block",
+  "revision": 1,
+  "assembly": {
+    "sockets": [
+      { "id": "mount-front-left", "accepts": ["mount"], "tags": ["mount"], "position": [-1, -0.25, 0.75], "rotation": [0, 0, 0] },
+      { "id": "mount-front-right", "accepts": ["mount"], "tags": ["mount"], "position": [1, -0.25, 0.75], "rotation": [0, 3.141592653589793, 0] },
+      { "id": "mount-rear-left", "accepts": ["mount"], "tags": ["mount"], "position": [-1.2, -0.25, -0.75], "rotation": [0, 0, 0] },
+      { "id": "mount-rear-right", "accepts": ["mount"], "tags": ["mount"], "position": [1.2, -0.25, -0.75], "rotation": [0, 3.141592653589793, 0] },
+      { "id": "frame-front", "accepts": ["mount"], "tags": ["mount"], "position": [0, 0, 1.25], "rotation": [0, 0, 0] },
+      { "id": "frame-rear", "accepts": ["mount"], "tags": ["mount"], "position": [0, 0, -1.25], "rotation": [0, 0, 0] },
+      { "id": "frame-left", "accepts": ["mount"], "tags": ["mount"], "position": [-1, 0, 0], "rotation": [0, 0, 0] },
+      { "id": "frame-right", "accepts": ["mount"], "tags": ["mount"], "position": [1, 0, 0], "rotation": [0, 0, 0] }
+    ],
+    "capabilities": []
+  },
+  "physics": {
+    "body": { "mass": 4, "linearDamping": 0.2, "angularDamping": 1.2 },
+    "colliders": [
+      { "shape": "cuboid", "halfExtents": [1, 0.25, 1.25], "position": [0, 0, 0], "rotation": [0, 0, 0], "friction": 1.2, "restitution": 0 }
+    ]
+  },
+  "visual": {
+    "factory": "structural-block",
+    "revision": 1,
+    "source": "procedural-brief",
+    "sourceCommit": "6e60b5e22419464b4853e01ddb6c0e6f6659a733",
+    "normalization": { "metersPerUnit": 1, "upAxis": "y", "forwardAxis": "z", "origin": "part-frame" },
+    "variants": [
+      { "id": "A", "label": "Solid block", "factory": "structural-block" },
+      { "id": "B", "label": "Braced frame", "factory": "structural-block" }
+    ]
+  },
+  "provenance": { "brief": "art-source/parts/structural-block/brief.md", "license": "Internal procedural design brief", "toolCommit": "6e60b5e22419464b4853e01ddb6c0e6f6659a733" }
+}

@@ -1,15 +1,17 @@
 import type { SimulationCompiler } from "../../simulation/application/simulation-compiler";
 
 export class SimulationModeController {
+  private host: HTMLElement | undefined;
+
   public constructor(private readonly compiler: SimulationCompiler) {}
 
   public mount(host: HTMLElement): void {
-    // TODO(plan-05): Wire Start/Stop/Reset to the runtime state machine.
-    void host;
-    void this.compiler;
+    this.host = host;
+    host.dataset.simulationModeOwner = this.compiler.constructor.name;
   }
 
   public dispose(): void {
-    // TODO(plan-05): Stop the active session and release UI listeners.
+    if (this.host !== undefined) delete this.host.dataset.simulationModeOwner;
+    this.host = undefined;
   }
 }

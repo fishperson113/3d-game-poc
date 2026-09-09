@@ -40,6 +40,17 @@ describe("Machine aggregate", () => {
     expect(machine.blueprint).toEqual(before);
   });
 
+  it("rolls back an atomic placement when connection or binding validation fails", () => {
+    const machine = restore({ schemaVersion: 1, id: "m", version: 0, parts: [{ id: "a", definitionId: "block", transform }], connections: [], controlBindings: [] });
+    const before = machine.blueprint;
+    expect(machine.placeAndConnect({
+      part: { id: "b", definitionId: "wheel", transform },
+      connection: { id: "bad-placement", a: { partId: "a", socketId: "missing" }, b: { partId: "b", socketId: "axle" }, joint: { type: "revolute", axis: [1, 0, 0] } },
+      bindings: [{ id: "b-drive", action: "drive", partId: "b", capability: "motor" }],
+    })).toMatchObject({ ok: false, error: { code: "building.socket.not-found" } });
+    expect(machine.blueprint).toEqual(before);
+  });
+
   it("rejects self-connections and non-finite transforms", () => {
     const machine = restore({ schemaVersion: 1, id: "m", version: 0, parts: [{ id: "a", definitionId: "block", transform }], connections: [], controlBindings: [] });
     expect(machine.connectParts({ id: "self", a: { partId: "a", socketId: "left" }, b: { partId: "a", socketId: "right" }, joint: { type: "fixed" } })).toMatchObject({ ok: false, error: { code: "building.connection.self-connection" } });

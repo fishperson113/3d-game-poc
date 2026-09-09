@@ -2,6 +2,8 @@
 
 ## Prerequisite
 
+**Điều chỉnh ngày 2026-09-09:** phần sandbox physics/compiler/editor/input/visual lifecycle được triển khai sớm trong [Plan 04 mở rộng](./04-part-asset-pipeline-detailed-implementation.md), không phụ thuộc Plan 03. Prerequisite bên dưới áp dụng cho tích hợp Challenge đầy đủ. Khi thực hiện Plan 05, tái sử dụng runtime Plan 04 và chỉ hoàn thiện các hạng mục còn lại theo evidence handoff.
+
 Chỉ bắt đầu sau khi plans 01–04 đã merge và `npm run check` pass. Đây là một plan tích hợp duy nhất; các bước dưới đây là subtask theo thứ tự vì cùng sở hữu lifecycle của `SimulationSession` và scene resources.
 
 ## Outcome
@@ -34,6 +36,7 @@ Các sửa đổi cần thiết ở module Wave A phải nhỏ, backward-compati
 
 - Renderer chỉ tiêu thụ build state hoặc `SimulationFrame`; Three scene không là source of truth.
 - Rapier handles chỉ sống trong session và không xuất hiện trong blueprint/event payload.
+- Plan 04 đã nối telemetry runtime vào event bus chung: `input.control.changed/reset`, `simulation.controls.applied` và `physics.collision.started/stopped`; Plan 05 chỉ cần tái sử dụng timeline này khi bổ sung challenge semantics.
 - Challenge kết luận result từ semantic simulation event, không từ raw Rapier callback.
 - Reset dispose toàn bộ world/render/input resources rồi dựng lại đúng build pose.
 

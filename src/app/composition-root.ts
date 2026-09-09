@@ -1,56 +1,64 @@
-import {
-  BundledLevelRepository,
-  ConsoleEventLogSink,
-  KeyboardInputSource,
-  MemoryMachineRepository,
-  RapierPhysicsWorld,
-  ThreeSimulationRenderer,
-} from "../adapters";
+import { ConsoleEventLogSink, KeyboardInputSource, MemoryEventLogSink, MemoryMachineRepository, RapierPhysicsWorld } from "../adapters";
 import { MachineBuildingService } from "../building";
-import { LoadLevel } from "../challenge";
 import { EventLogService } from "../event-log";
-import type { EventEnvelope, EventPublisher } from "../kernel/events/contracts";
+import { EventEnvelopeFactory, createEventSequenceSource, NamespacedEventBus, type EventEnvelope } from "../kernel/events";
 import { StaticPartCatalog } from "../parts";
 import { SimulationCompiler, SimulationSession } from "../simulation";
-
-class ScaffoldEventPublisher implements EventPublisher {
-  public publish(event: EventEnvelope): void {
-    // TODO(plan-01): Replace with the namespaced in-process event bus.
-    void event;
-  }
-
-  public subscribe(pattern: string, handler: (event: EventEnvelope) => void): () => void {
-    // TODO(plan-01): Implement exact and wildcard subscriptions.
-    void pattern;
-    void handler;
-    return () => undefined;
-  }
-}
+import type { PhysicsWorld } from "../simulation";
+import type { SimulationRenderer } from "../simulation/ports/simulation-renderer";
+import type { JsonValue } from "../kernel/json";
+import type { RuntimeTelemetryEvent, RuntimeTelemetrySink } from "../simulation/ports/runtime-telemetry";
 
 export interface ApplicationComposition {
   readonly building: MachineBuildingService;
-  readonly loadLevel: LoadLevel;
+  readonly catalog: StaticPartCatalog;
   readonly simulationCompiler: SimulationCompiler;
+  readonly events: NamespacedEventBus;
+  readonly eventFactory: EventEnvelopeFactory;
   readonly eventLog: EventLogService;
-  createSimulationSession(): SimulationSession;
+  readonly memoryLog: MemoryEventLogSink;
+  createSimulationSession(world: PhysicsWorld, renderer: SimulationRenderer): SimulationSession;
+  emit(type: string, payload: JsonValue, severity?: EventEnvelope["severity"]): void;
 }
 
 export function createApplicationComposition(): ApplicationComposition {
-  const events = new ScaffoldEventPublisher();
-  const eventLog = new EventLogService([new ConsoleEventLogSink()]);
-  const building = new MachineBuildingService(new MemoryMachineRepository(), new StaticPartCatalog(), events);
-  const loadLevel = new LoadLevel(new BundledLevelRepository(), events);
-  const simulationCompiler = new SimulationCompiler({ createPhysicsWorld: () => new RapierPhysicsWorld(), events });
-
+  const sequence = createEventSequenceSource();
+  const eventFactory = new EventEnvelopeFactory({ sequence, producer: "sandbox.application" });
+  let runtimeCorrelationId = eventFactory.startCorrelation();
+  const memoryLog = new MemoryEventLogSink({ capacity: 1500 });
+  const eventLog = new EventLogService([memoryLog, new ConsoleEventLogSink()]);
+  const events = new NamespacedEventBus();
+  events.subscribe("*", (event) => { eventLog.record(event); });
+  const createTelemetry = (producer: string): RuntimeTelemetrySink => (event: RuntimeTelemetryEvent): void => {
+    const created = eventFactory.create({ type: event.type, eventVersion: 1, severity: event.severity ?? "debug", producer, correlationId: runtimeCorrelationId, payload: event.payload, ...(event.tags === undefined ? {} : { tags: event.tags }) });
+    if (created.ok) events.publish(created.value);
+  };
+  const catalog = new StaticPartCatalog();
+  const building = new MachineBuildingService(new MemoryMachineRepository(), catalog, events, {
+    id: () => eventFactory.startCorrelation(),
+    now: () => new Date().toISOString(),
+    producer: "sandbox.building",
+    sequence: () => sequence.next(),
+  });
+  const simulationCompiler = new SimulationCompiler({ createPhysicsWorld: () => {
+    runtimeCorrelationId = eventFactory.startCorrelation();
+    return new RapierPhysicsWorld({ telemetry: createTelemetry("sandbox.physics") });
+  }, catalog, events });
   return {
     building,
-    loadLevel,
+    catalog,
     simulationCompiler,
+    events,
+    eventFactory,
     eventLog,
-    createSimulationSession: () => new SimulationSession(
-      new RapierPhysicsWorld(),
-      new KeyboardInputSource(),
-      new ThreeSimulationRenderer(),
-    ),
+    memoryLog,
+    createSimulationSession: (world, renderer) => {
+      const telemetry = createTelemetry("sandbox.runtime");
+      return new SimulationSession(world, new KeyboardInputSource({ telemetry }), renderer, { telemetry });
+    },
+    emit: (type, payload, severity = "info") => {
+      const created = eventFactory.create({ type, eventVersion: 1, severity, correlationId: type.startsWith("simulation.") ? runtimeCorrelationId : eventFactory.startCorrelation(), payload });
+      if (created.ok) events.publish(created.value);
+    },
   };
 }

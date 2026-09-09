@@ -19,7 +19,7 @@
     "test:e2e": "playwright test",
     "check": "npm run typecheck && npm run lint && npm run test && npm run test:boundary && npm run test:event-boundary && npm run build",
     "part:validate": "node scripts/validate-part.mjs",
-    "part:preview": "vite --mode part-preview",
+    "part:preview": "node scripts/part-preview.mjs",
     "part:qa": "node scripts/part-qa.mjs",
     "skill:install:img2threejs": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-img2threejs.ps1"
   },

@@ -1,5 +1,7 @@
 # Plan 04 — Part catalog and img2threejs asset pipeline
 
+**Status: IMPLEMENTED for Plan 04 runtime acceptance.** Phạm vi được user mở rộng ngày 2026-09-09: thêm sandbox lắp ráp/lái xe bằng `npm run dev`, chưa làm Challenge. [Kế hoạch triển khai chi tiết](./04-part-asset-pipeline-detailed-implementation.md) là scope thực thi hiện tại, bao gồm phần ownership runtime lấy sớm từ Plan 05. Strict img2threejs authoring limitation và cách thay model được ghi ở [part-model-replacement.md](./part-model-replacement.md).
+
 ## Outcome
 
 Ba part cốt lõi có manifest, authoritative sockets/colliders, generated visual boundary, isolated preview và validation tooling. Runtime build vẫn hoạt động khi checkout img2threejs không có mặt.
