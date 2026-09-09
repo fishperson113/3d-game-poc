@@ -26,7 +26,7 @@ Giữ Vanilla TypeScript, Three.js trực tiếp và Rapier; không thêm UI fra
 | `scripts/validate-part.mjs`, `part-qa.mjs` | Kiểm tra manifest tối thiểu, wrapper QA sơ bộ | Dùng validator chung; test selection đúng và chạy được trên Windows |
 | `tools/img2threejs.lock.json` | Đã pin SHA cụ thể | Verify checkout/provenance lúc authoring; không chạy generator khi dev/build |
 
-Baseline trước khi sửa đã kiểm chứng: `npm run check` pass, 9 files / 73 tests. Sau triển khai, regression Node là 11 files / 78 tests; browser e2e và part QA được ghi ở mục evidence cuối tài liệu.
+Baseline trước khi sửa đã kiểm chứng: `npm run check` pass, 9 files / 73 tests. Sau triển khai, regression Node là 12 files / 79 tests; browser e2e và part QA được ghi ở mục evidence cuối tài liệu.
 
 ## 3. Ownership và thay đổi contract
 
@@ -122,6 +122,7 @@ Checkpoint đạt: browser e2e tự tạo chassis + 2 steering hinges + 4 wheels
 - Mở rộng `PhysicsWorld` port cho create bodies/colliders/joints, motor commands và transform snapshots bằng stable IDs; Rapier handles giữ private trong adapter.
 - Init Rapier một lần; compile stable ordering từ immutable blueprint + catalog physics + environment. Validate toàn bộ trước allocation, rollback/dispose nếu allocation thất bại giữa chừng.
 - Structural connections fixed; hinge steering revolute có limits/servo; wheel spin revolute có velocity target và force/torque bound. Chọn joint role từ socket/capability metadata, không if theo instance ID.
+- Physics QA fix: collider của các part trong cùng machine dùng collision filtering để không tự va chạm với nhau nhưng vẫn va chạm ground/ramp; root spawn là `y=0.75` để wheel radius `0.48` và mount offset `-0.25` bắt đầu sát ground. Solver ưu tiên `axle` của steering hinge khi palette tự chọn candidate đầu tiên.
 - Compile bindings thành runtime actuator map. Test trái/phải được lắp đối xứng nhưng forward cùng đẩy xe theo +Z; steering tôn trọng giới hạn.
 - Headless fixture tests trên ground: settle, drive, reverse, steer và không có NaN/joint explosion; thêm ramp để kiểm tra tiếp xúc thật. Mức displacement/yaw tối thiểu được ghi trước khi chốt tuning; không chỉ assert bánh có quay.
 
@@ -131,8 +132,10 @@ Checkpoint đạt: headless Rapier test chứng minh forward displacement, rever
 
 - Implement accumulator 1/60 với bounded catch-up, timestep clamp và snapshots. Một owner RAF ở app; không tạo loop trong visual factory hoặc mỗi session.
 - Keyboard read trả drive/steer chuẩn hóa [-1,1]; keyup, blur, visibility change và dispose phải zero input. Bỏ qua shortcut khi đang nhập inspector field.
+- Runtime telemetry đi qua cùng event envelope/sequence/event bus: `input.control.changed` ghi source, phase, code, pressed keys và controls chuẩn hóa; `input.control.reset` ghi lý do reset; `simulation.controls.applied` ghi controls đã được áp vào fixed step.
 - Start dùng `acquireSimulationSnapshot`; compile thành công mới Running. Compile fail dispose world đã tạo và `releaseSimulation`, trả về Building cùng lỗi.
 - Stop/Reset dispose session resources và dựng lại build pose từ snapshot; không copy transform vật lý ngược vào blueprint. Reset không tạo challenge failure.
+- Rapier drain collision queue thành `physics.collision.started/stopped` với semantic part/environment IDs và physics step; raw Rapier handles không đi vào Event Log.
 - Sandbox lifecycle: boot assets → Building → Compiling → Running → Building; lỗi khởi tạo có retry rõ. Không dựng Completed/Failed giả khi chưa có Challenge.
 
 Checkpoint đạt: session fixed 1/60 bounded catch-up; input reset ở keyup/blur/visibility/dispose; e2e quan sát 20 vòng sau warm-up với world/input baseline bằng 0, một RAF owner và renderer WebGL resource counts ổn định.
@@ -143,6 +146,7 @@ Checkpoint đạt: session fixed 1/60 bounded catch-up; input reset ở keyup/bl
 - Orbit/zoom camera, picking và ghost placement; highlight socket đang chọn. Phím R xoay preview, Escape hủy, Delete xóa selection chỉ trong Building.
 - Load sample phục vụ kiểm tra nhanh; luồng build từ root block trống vẫn đầy đủ. Running khóa commands sửa máy; hiển thị hướng dẫn keyboard.
 - Wire bus/registry/memory/console với cùng sequence source cho Building, assets và simulation; reporter diagnostics dùng cấu hình đã kiểm thử Plan 01. Event viewer tối thiểu có filter/export, lifecycle và command rejection.
+- Event viewer lọc được trực tiếp `input.*` và `physics.*`, nên có thể debug input keydown/keyup, controls áp dụng theo step và tiếp xúc giữa part với ground/ramp từ cùng UI.
 - Khi Start/Reset, create/dispose visual ownership rõ; không yêu cầu browser reload giữa hai lần chạy. HMR/app teardown cũng dispose listeners, renderer và session.
 - Không cần backend, API key, Python hoặc checkout img2threejs để chạy source visual đã commit.
 
@@ -166,9 +170,13 @@ Checkpoint đạt: `npm run dev` được mở bằng Chrome thực tế; UI có
 | `npm run part:qa -- core.structural-block` | pass: manifest/provenance + 3 manifest/catalog tests |
 | `npm run part:qa -- core.powered-wheel` | pass: manifest/provenance + 3 manifest/catalog tests |
 | `npm run part:qa -- core.steering-hinge` | pass: manifest/provenance + 3 manifest/catalog tests |
-| `npm run test` | pass: 11 files / 78 tests |
-| `npm run test:e2e` | pass trên Chrome: self-assembly, drive/steer, Reset, A/B, 20 Start/Reset cycles và responsive desktop/tablet/mobile không có page scrollbar |
-| screenshots | A/B khác SHA, cùng viewport/camera: A `91A0F5537181C7032120134D7EF3DDC04CB11DB5BAB4D16ECFC076FFE47C6765`, B `D28673D63CBF5D834DBE49916E76468DFE678E4F27E6A4F1D81B0221325A44A7` |
+| `npm run test` | pass: 12 files / 79 tests |
+| `npm run check` | pass: typecheck, lint, 12 files / 79 tests, boundary checks và production build |
+| `npm run test:e2e` | pass trên Chrome: tự lắp từ palette với wheel-to-axle layout, giữ W+D có control telemetry và displacement, Reset, A/B, 20 Start/Reset cycles và responsive desktop/tablet/mobile không có page scrollbar |
+| event telemetry trong Event Log | pass bằng computer use trên production preview: Start hiện `physics.collision.started` với semantic body IDs; phím W hiện `input.control.changed` cho keydown/keyup; Reset hiện `simulation.reset` và `building.simulation.snapshot-released` |
+| physics stability | pass: sau 90 fixed steps không control, chassis drift mỗi trục < 0.15 m và nghiêng < 0.08 quaternion component; headless drive/steer/reverse pass; collider self-contact đã được loại bỏ |
+| browser computer-use QA | pass trên production preview: Load sample → Start → Reset; sau Reset AX state là BUILDING, active physics worlds `0`, input listeners `0`, blueprint pose giữ `y=0.75` |
+| screenshots | A/B khác SHA, cùng viewport/camera: A `FCCCBEC1BDFE5C42B881DB71C255971AA2DFE711EDAEFF792F383F16543DF62B`, B `C7C762279F6444674285803DB1C6DD2AB318CC747F8D2618138DF3511C432CF3` |
 | `npm run dev` | pass: sandbox Build mode mở được và thao tác được trên browser |
 | `npm run part:preview -- core.structural-block` | pass: isolated preview A/B + sockets/colliders/provenance |
 

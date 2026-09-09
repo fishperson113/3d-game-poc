@@ -66,6 +66,17 @@ export function findPlacementCandidates(blueprint: MachineBlueprint, definitionI
       }
     }
   }
+  // Prefer steering axles for powered wheels. This keeps the default palette
+  // flow aligned with the intended four-wheel layout while still exposing all
+  // compatible sockets through the candidate cycling controls.
+  if (definitionId === "core.powered-wheel") {
+    const priority = (candidate: AssemblyPlacementCandidate): number => {
+      if (candidate.targetSocketId === "axle") return 0;
+      if (candidate.targetSocketId.startsWith("mount-")) return 1;
+      return 2;
+    };
+    candidates.sort((left, right) => priority(left) - priority(right));
+  }
   return candidates;
 }
 
@@ -90,7 +101,9 @@ export function rotatePlacementCandidate(blueprint: MachineBlueprint, definition
 }
 
 export function rootTransform(): PartTransform {
-  return { position: [0, 1.55, 0], rotation: [0, 0, 0] };
+  // Wheel radius (0.48 m) plus the socket offset (-0.25 m) puts the wheel
+  // contact patch at ground level when the chassis origin starts at 0.75 m.
+  return { position: [0, 0.75, 0], rotation: [0, 0, 0] };
 }
 
 export function getSocketFrame(blueprint: MachineBlueprint, catalog: PartCatalog, partId: string, socketId: string): ReturnType<typeof worldSocketFrame> | undefined {

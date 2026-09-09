@@ -46,7 +46,7 @@ export class AppView {
           <main class="viewport-panel"><div class="viewport" data-role="viewport"></div><div class="viewport-overlay"><span class="mode-label">BUILD / PHYSICS VIEW</span><span class="placement-label" data-role="placement-label">Ready to place a root block.</span><div class="placement-actions" data-role="placement-actions"><button data-action="previous-socket">← socket</button><button data-action="next-socket">socket →</button><button data-action="rotate-placement">Rotate 90°</button><button data-action="confirm-placement" class="primary">Confirm</button><button data-action="cancel-placement">Cancel</button></div></div></main>
           <aside class="panel events-panel">
             <div class="panel-heading"><span>Event viewer</span><button data-action="export" class="text-button">Export JSON</button></div>
-            <label class="event-filter">Filter <input data-role="event-filter" placeholder="all events" /></label>
+            <label class="event-filter">Filter <input data-role="event-filter" placeholder="all events · input.* · physics.*" /></label>
             <div data-role="events" class="events" aria-live="polite"></div>
           </aside>
         </div>

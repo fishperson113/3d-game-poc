@@ -1,7 +1,8 @@
 import { FIXED_TIMESTEP_SECONDS } from "../../kernel/runtime-contract";
-import type { InputSource } from "../ports/input-source";
+import type { ControlState, InputSource } from "../ports/input-source";
 import type { PhysicsWorld } from "../ports/physics-world";
 import type { SimulationRenderer } from "../ports/simulation-renderer";
+import type { RuntimeTelemetrySink } from "../ports/runtime-telemetry";
 
 const MAX_FRAME_SECONDS = 0.25;
 const MAX_CATCH_UP_STEPS = 5;
@@ -12,16 +13,23 @@ export interface SimulationSessionStats {
   readonly world: ReturnType<PhysicsWorld["getStats"]>;
 }
 
+export interface SimulationSessionOptions {
+  readonly telemetry?: RuntimeTelemetrySink;
+}
+
 export class SimulationSession {
   private accumulator = 0;
   private disposed = false;
   private running = false;
+  private lastControls: ControlState = { throttle: 0, steering: 0 };
+  private readonly telemetry: RuntimeTelemetrySink | undefined;
 
   public constructor(
     private readonly physics: PhysicsWorld,
     private readonly input: InputSource,
     private readonly renderer: SimulationRenderer,
-  ) {}
+    options: SimulationSessionOptions = {},
+  ) { this.telemetry = options.telemetry; }
 
   public start(): void {
     if (this.disposed) throw new Error("simulation.session.disposed");
@@ -35,7 +43,12 @@ export class SimulationSession {
     this.accumulator = Math.min(MAX_FRAME_SECONDS, this.accumulator + Math.max(0, deltaSeconds));
     let steps = 0;
     while (this.accumulator >= FIXED_TIMESTEP_SECONDS && steps < MAX_CATCH_UP_STEPS) {
-      this.physics.setControls(this.input.read());
+      const controls = this.input.read();
+      if (controls.throttle !== this.lastControls.throttle || controls.steering !== this.lastControls.steering) {
+        this.publish({ type: "simulation.controls.applied", payload: { throttle: controls.throttle, steering: controls.steering, physicsStep: this.physics.getStats().steps }, severity: "debug", tags: ["input", "physics", "simulation.controls"] });
+      }
+      this.lastControls = controls;
+      this.physics.setControls(this.lastControls);
       this.physics.step(FIXED_TIMESTEP_SECONDS);
       this.accumulator -= FIXED_TIMESTEP_SECONDS;
       steps += 1;
@@ -48,6 +61,7 @@ export class SimulationSession {
     this.running = false;
     this.accumulator = 0;
     this.input.reset?.();
+    this.lastControls = { throttle: 0, steering: 0 };
   }
 
   public getStats(): SimulationSessionStats {
@@ -60,6 +74,7 @@ export class SimulationSession {
     this.running = false;
     this.accumulator = 0;
     this.input.reset?.();
+    this.lastControls = { throttle: 0, steering: 0 };
     if (options.disposeInput !== false) this.input.dispose();
     if (options.disposeRenderer !== false) this.renderer.dispose();
     this.physics.dispose();
@@ -67,5 +82,17 @@ export class SimulationSession {
 
   public describeFixedStep(): number {
     return FIXED_TIMESTEP_SECONDS;
+  }
+
+  public getLastControls(): ControlState {
+    return this.lastControls;
+  }
+
+  private publish(event: Parameters<RuntimeTelemetrySink>[0]): void {
+    try {
+      this.telemetry?.(event);
+    } catch {
+      // Telemetry must never break the fixed-step loop.
+    }
   }
 }

@@ -3,12 +3,17 @@ import { FIXED_TIMESTEP_SECONDS } from "../../kernel/runtime-contract";
 import { quaternionFromEuler, type TransformSnapshot } from "../../kernel/math";
 import type { SimulationFrame } from "../../simulation/ports/simulation-renderer";
 import type { PhysicsActuatorSpec, PhysicsJointSpec, PhysicsSpecification, PhysicsWorld, PhysicsWorldStats } from "../../simulation/ports/physics-world";
+import type { RuntimeTelemetrySink } from "../../simulation/ports/runtime-telemetry";
 
 type RapierBody = RAPIER.RigidBody;
 type RapierJoint = RAPIER.ImpulseJoint;
 
 let rapierReady: Promise<void> | undefined;
 let activeWorldCount = 0;
+
+export interface RapierPhysicsWorldOptions {
+  readonly telemetry?: RuntimeTelemetrySink;
+}
 
 export function initializeRapier(): Promise<void> {
   rapierReady ??= RAPIER.init();
@@ -33,13 +38,21 @@ export class RapierPhysicsWorld implements PhysicsWorld {
   private world: RAPIER.World | undefined;
   private readonly bodies = new Map<string, RapierBody>();
   private readonly joints = new Map<string, RapierJoint>();
+  private readonly colliderLabels = new Map<number, string>();
   private readonly actuators = new Map<string, PhysicsActuatorSpec>();
+  private readonly telemetry: RuntimeTelemetrySink | undefined;
+  private eventQueue: RAPIER.EventQueue | undefined;
   private controls = { throttle: 0, steering: 0 };
   private stepCount = 0;
+
+  public constructor(options: RapierPhysicsWorldOptions = {}) {
+    this.telemetry = options.telemetry;
+  }
 
   public initialize(specification: PhysicsSpecification): void {
     if (this.world !== undefined) throw new Error("simulation.world.already-initialized");
     const world = new RAPIER.World(vector(specification.environment.gravity));
+    const eventQueue = new RAPIER.EventQueue(true);
     world.timestep = FIXED_TIMESTEP_SECONDS;
     world.numSolverIterations = 8;
     try {
@@ -67,20 +80,29 @@ export class RapierPhysicsWorld implements PhysicsWorld {
             if (collider.halfHeight === undefined || collider.radius === undefined) throw new Error("simulation.collider.missing-cylinder-size");
             descriptorCollider = RAPIER.ColliderDesc.cylinder(collider.halfHeight, collider.radius);
           }
+          // Part bodies share the same machine and should not collide with one
+          // another. They still collide with the default-group ground/ramp.
+          // Without this filter, a wheel intersecting the chassis produces
+          // artificial torque through contacts that are outside its joint.
+          descriptorCollider.setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS).setCollisionGroups(0x00020001);
           descriptorCollider.setTranslation(collider.position[0], collider.position[1], collider.position[2]);
           descriptorCollider.setRotation(rotation(quaternionFromEuler(collider.rotation)));
           descriptorCollider.setFriction(collider.friction).setRestitution(collider.restitution);
-          world.createCollider(descriptorCollider, body);
+          const createdCollider = world.createCollider(descriptorCollider, body);
+          this.colliderLabels.set(createdCollider.handle, bodySpec.id);
         }
       }
       for (const jointSpec of specification.joints) this.createJoint(world, jointSpec);
       for (const actuator of specification.actuators) this.actuators.set(actuator.bindingId, actuator);
       this.world = world;
+      this.eventQueue = eventQueue;
       activeWorldCount += 1;
     } catch (error) {
+      eventQueue.free();
       world.free();
       this.bodies.clear();
       this.joints.clear();
+      this.colliderLabels.clear();
       this.actuators.clear();
       throw error;
     }
@@ -108,8 +130,15 @@ export class RapierPhysicsWorld implements PhysicsWorld {
     if (this.world === undefined) return;
     this.world.timestep = timestepSeconds;
     this.setControls(this.controls);
-    this.world.step();
+    this.world.step(this.eventQueue);
     this.stepCount += 1;
+    this.eventQueue?.drainCollisionEvents((handleA, handleB, started) => {
+      const labelA = this.colliderLabels.get(handleA);
+      const labelB = this.colliderLabels.get(handleB);
+      if (labelA === undefined || labelB === undefined) return;
+      const labels = [labelA, labelB].sort();
+      this.publish({ type: started ? "physics.collision.started" : "physics.collision.stopped", payload: { bodyA: labels[0] ?? labelA, bodyB: labels[1] ?? labelB, phase: started ? "started" : "stopped", physicsStep: this.stepCount }, severity: "debug", tags: ["physics", "physics.collision"] });
+    });
   }
 
   public snapshot(): SimulationFrame {
@@ -123,6 +152,10 @@ export class RapierPhysicsWorld implements PhysicsWorld {
   }
 
   public dispose(): void {
+    if (this.eventQueue !== undefined) {
+      this.eventQueue.free();
+      this.eventQueue = undefined;
+    }
     if (this.world !== undefined) {
       this.world.free();
       this.world = undefined;
@@ -130,6 +163,7 @@ export class RapierPhysicsWorld implements PhysicsWorld {
     }
     this.bodies.clear();
     this.joints.clear();
+    this.colliderLabels.clear();
     this.actuators.clear();
     this.controls = { throttle: 0, steering: 0 };
     this.stepCount = 0;
@@ -140,10 +174,12 @@ export class RapierPhysicsWorld implements PhysicsWorld {
   private createEnvironment(world: RAPIER.World, specification: PhysicsSpecification): void {
     const ground = world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(specification.environment.ground.position[0], specification.environment.ground.position[1], specification.environment.ground.position[2]));
     const groundSize = specification.environment.ground.halfExtents;
-    world.createCollider(RAPIER.ColliderDesc.cuboid(groundSize[0], groundSize[1], groundSize[2]).setFriction(1.5), ground);
+    const groundCollider = world.createCollider(RAPIER.ColliderDesc.cuboid(groundSize[0], groundSize[1], groundSize[2]).setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS).setFriction(1.5), ground);
+    this.colliderLabels.set(groundCollider.handle, "environment.ground");
     const ramp = specification.environment.ramp;
     const rampBody = world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(ramp.position[0], ramp.position[1], ramp.position[2]).setRotation(rotation(quaternionFromEuler(ramp.rotation))));
-    world.createCollider(RAPIER.ColliderDesc.cuboid(ramp.halfExtents[0], ramp.halfExtents[1], ramp.halfExtents[2]).setFriction(1.3), rampBody);
+    const rampCollider = world.createCollider(RAPIER.ColliderDesc.cuboid(ramp.halfExtents[0], ramp.halfExtents[1], ramp.halfExtents[2]).setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS).setFriction(1.3), rampBody);
+    this.colliderLabels.set(rampCollider.handle, "environment.ramp");
   }
 
   private createJoint(world: RAPIER.World, spec: PhysicsJointSpec): void {
@@ -159,5 +195,13 @@ export class RapierPhysicsWorld implements PhysicsWorld {
     joint.setContactsEnabled(spec.contactsEnabled);
     if (spec.limits !== undefined && spec.type === "revolute") (joint as RAPIER.RevoluteImpulseJoint).setLimits(spec.limits[0], spec.limits[1]);
     this.joints.set(spec.id, joint);
+  }
+
+  private publish(event: Parameters<RuntimeTelemetrySink>[0]): void {
+    try {
+      this.telemetry?.(event);
+    } catch {
+      // Telemetry must never break the physics step.
+    }
   }
 }

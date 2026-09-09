@@ -90,6 +90,7 @@ export class SandboxApplication {
     const delta = this.lastFrameTime === 0 ? 0 : Math.min(0.1, (time - this.lastFrameTime) / 1000);
     this.lastFrameTime = time;
     if (this.session !== undefined) this.session.advance(delta);
+    this.updatePhysicsDiagnostics();
     this.rafId = requestAnimationFrame(this.onFrame);
   };
 
@@ -145,6 +146,9 @@ export class SandboxApplication {
     this.blueprint = loaded.value;
     this.renderer.setBlueprint(this.blueprint, this.composition.catalog, this.variants);
     this.renderer.setSelection(this.selectedPartId);
+    delete this.host.dataset.physicsRootPosition;
+    delete this.host.dataset.physicsRootRotation;
+    delete this.host.dataset.physicsControls;
     this.refreshView();
   }
 
@@ -244,6 +248,7 @@ export class SandboxApplication {
     this.session = this.composition.createSimulationSession(compiled.value.world, this.renderer);
     this.host.dataset.physicsSpecificationJson = serializePhysicsSpecification(compiled.value.specification);
     this.session.start();
+    this.updatePhysicsDiagnostics();
     this.state = "Running";
     this.feedback = { tone: "good", message: "Running. W/S or ↑/↓ drive · A/D or ←/→ steer · Stop returns to build pose." };
     this.composition.emit("simulation.started", { blueprintVersion: snapshot.value.version, bodies: compiled.value.specification.bodies.length, joints: compiled.value.specification.joints.length });
@@ -328,6 +333,16 @@ export class SandboxApplication {
     this.feedback = { tone: "bad", message: `Rejected: ${message}` };
     this.composition.emit("building.command.rejected.ui", { message }, "warn");
     this.refreshView();
+  }
+
+  private updatePhysicsDiagnostics(): void {
+    if (this.session === undefined) return;
+    const rootId = this.blueprint.parts[0]?.id;
+    const transform = rootId === undefined ? undefined : this.renderer.getLastFrame()?.transforms[String(rootId)];
+    if (transform === undefined) return;
+    this.host.dataset.physicsRootPosition = JSON.stringify(transform.position);
+    this.host.dataset.physicsRootRotation = JSON.stringify(transform.rotation);
+    this.host.dataset.physicsControls = JSON.stringify(this.session.getLastControls());
   }
 
   private refreshView(): void {

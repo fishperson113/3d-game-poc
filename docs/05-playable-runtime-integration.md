@@ -36,6 +36,7 @@ Các sửa đổi cần thiết ở module Wave A phải nhỏ, backward-compati
 
 - Renderer chỉ tiêu thụ build state hoặc `SimulationFrame`; Three scene không là source of truth.
 - Rapier handles chỉ sống trong session và không xuất hiện trong blueprint/event payload.
+- Plan 04 đã nối telemetry runtime vào event bus chung: `input.control.changed/reset`, `simulation.controls.applied` và `physics.collision.started/stopped`; Plan 05 chỉ cần tái sử dụng timeline này khi bổ sung challenge semantics.
 - Challenge kết luận result từ semantic simulation event, không từ raw Rapier callback.
 - Reset dispose toàn bộ world/render/input resources rồi dựng lại đúng build pose.
 

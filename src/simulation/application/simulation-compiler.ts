@@ -126,7 +126,7 @@ function buildActuators(blueprint: MachineBlueprint, catalog: RuntimePartCatalog
 }
 
 export function defaultSimulationEnvironment(): SimulationEnvironment {
-  return { gravity: [0, -9.81, 0], spawn: [0, 1.55, 0], ground: { halfExtents: [14, 0.15, 14], position: [0, -0.15, 0] }, ramp: { halfExtents: [3, 0.22, 1.8], position: [0, 0.28, 5], rotation: [-0.22, 0, 0] } };
+  return { gravity: [0, -9.81, 0], spawn: [0, 0.75, 0], ground: { halfExtents: [14, 0.15, 14], position: [0, -0.15, 0] }, ramp: { halfExtents: [3, 0.22, 1.8], position: [0, 0.28, 5], rotation: [-0.22, 0, 0] } };
 }
 
 export class SimulationCompiler {
