@@ -4,8 +4,22 @@ import { parsePartManifest, projectPartDefinition, type PartManifest, type PartP
 import structuralRaw from "./structural-block/manifest.json";
 import wheelRaw from "./powered-wheel/manifest.json";
 import hingeRaw from "./steering-hinge/manifest.json";
+import heavyBeamRaw from "./heavy-beam/manifest.json";
+import batteryBoxRaw from "./battery-box/manifest.json";
+import crawlerTrackRaw from "./crawler-track/manifest.json";
+import motorModuleRaw from "./motor-module/manifest.json";
+import driveGearRaw from "./drive-gear/manifest.json";
 
-const rawManifests: readonly unknown[] = [structuralRaw, wheelRaw, hingeRaw];
+const rawManifests: readonly unknown[] = [
+  structuralRaw,
+  wheelRaw,
+  hingeRaw,
+  heavyBeamRaw,
+  batteryBoxRaw,
+  crawlerTrackRaw,
+  motorModuleRaw,
+  driveGearRaw,
+];
 
 export interface RuntimePartCatalog extends PartCatalog {
   getPhysics(partDefinitionId: string): PartPhysicsDefinition | undefined;

@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "kind": "core.part",
+  "id": "core.heavy-beam",
+  "revision": 1,
+  "assembly": {
+    "sockets": [
+      { "id": "mount-front-left", "accepts": ["mount"], "tags": ["mount"], "position": [-1, -0.25, 2.0], "rotation": [0, 0, 0] },
+      { "id": "mount-front-right", "accepts": ["mount"], "tags": ["mount"], "position": [1, -0.25, 2.0], "rotation": [0, 3.141592653589793, 0] },
+      { "id": "mount-mid-left", "accepts": ["mount"], "tags": ["mount"], "position": [-1, -0.25, 0], "rotation": [0, 0, 0] },
+      { "id": "mount-mid-right", "accepts": ["mount"], "tags": ["mount"], "position": [1, -0.25, 0], "rotation": [0, 3.141592653589793, 0] },
+      { "id": "mount-rear-left", "accepts": ["mount"], "tags": ["mount"], "position": [-1, -0.25, -2.0], "rotation": [0, 0, 0] },
+      { "id": "mount-rear-right", "accepts": ["mount"], "tags": ["mount"], "position": [1, -0.25, -2.0], "rotation": [0, 3.141592653589793, 0] },
+      { "id": "frame-front", "accepts": ["mount"], "tags": ["mount"], "position": [0, 0, 2.5], "rotation": [0, 0, 0] },
+      { "id": "frame-rear", "accepts": ["mount"], "tags": ["mount"], "position": [0, 0, -2.5], "rotation": [0, 0, 0] },
+      { "id": "frame-top", "accepts": ["mount"], "tags": ["mount"], "position": [0, 0.25, 0], "rotation": [0, 0, 0] }
+    ],
+    "capabilities": []
+  },
+  "physics": {
+    "body": { "mass": 6.5, "linearDamping": 0.25, "angularDamping": 1.4 },
+    "colliders": [
+      { "shape": "cuboid", "halfExtents": [1.0, 0.25, 2.5], "position": [0, 0, 0], "rotation": [0, 0, 0], "friction": 1.2, "restitution": 0 }
+    ]
+  },
+  "visual": {
+    "factory": "heavy-beam",
+    "revision": 1,
+    "source": "procedural-brief",
+    "sourceCommit": "6e60b5e22419464b4853e01ddb6c0e6f6659a733",
+    "normalization": { "metersPerUnit": 1, "upAxis": "y", "forwardAxis": "z", "origin": "part-frame" },
+    "variants": [
+      { "id": "A", "label": "Thanh dầm đặc (Solid Beam)", "factory": "heavy-beam" },
+      { "id": "B", "label": "Khung gia cố (Truss Beam)", "factory": "heavy-beam" }
+    ]
+  },
+  "provenance": { "brief": "art-source/parts/heavy-beam/brief.md", "license": "STEM Lab procedural part", "toolCommit": "6e60b5e22419464b4853e01ddb6c0e6f6659a733" }
+}

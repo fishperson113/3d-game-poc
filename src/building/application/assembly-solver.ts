@@ -36,7 +36,8 @@ function socket(definition: PartDefinition, socketId: string): SocketDefinition 
 
 function defaultJoint(definitionId: string, targetSocketId: string): ConnectionInput["joint"] {
   if (definitionId === "core.steering-hinge") return { type: "revolute", axis: [0, 1, 0], limits: [-0.6, 0.6] };
-  if (definitionId === "core.powered-wheel") return { type: "revolute", axis: [1, 0, 0] };
+  if (definitionId === "core.motor-module") return { type: "fixed" };
+  if (definitionId === "core.powered-wheel" || definitionId === "core.crawler-track" || definitionId === "core.drive-gear") return { type: "revolute", axis: [1, 0, 0] };
   void targetSocketId;
   return { type: "fixed" };
 }
@@ -66,11 +67,10 @@ export function findPlacementCandidates(blueprint: MachineBlueprint, definitionI
       }
     }
   }
-  // Prefer steering axles for powered wheels. This keeps the default palette
-  // flow aligned with the intended four-wheel layout while still exposing all
-  // compatible sockets through the candidate cycling controls.
-  if (definitionId === "core.powered-wheel") {
+  // Prefer front bumper for climbing gears, steering axles for powered wheels, and tracks.
+  if (definitionId === "core.powered-wheel" || definitionId === "core.crawler-track" || definitionId === "core.drive-gear") {
     const priority = (candidate: AssemblyPlacementCandidate): number => {
+      if (definitionId === "core.drive-gear" && candidate.targetSocketId === "frame-front") return -1;
       if (candidate.targetSocketId === "axle") return 0;
       if (candidate.targetSocketId.startsWith("mount-")) return 1;
       return 2;

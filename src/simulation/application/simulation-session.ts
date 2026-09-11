@@ -102,6 +102,10 @@ export class SimulationSession {
     return { steps: this.physics.getStats().steps, accumulatorSeconds: this.accumulator, world: this.physics.getStats() };
   }
 
+  public getInput(): InputSource {
+    return this.input;
+  }
+
   public dispose(options: { readonly disposeInput?: boolean; readonly disposeRenderer?: boolean } = {}): void {
     if (this.disposed) return;
     this.disposed = true;

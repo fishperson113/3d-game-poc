@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "kind": "core.part",
+  "id": "core.crawler-track",
+  "revision": 1,
+  "assembly": {
+    "sockets": [
+      { "id": "axle", "accepts": ["mount", "axle"], "tags": ["mount", "axle"], "position": [0, 0, 0], "rotation": [0, 0, 0] }
+    ],
+    "capabilities": ["core.motor-wheel"],
+    "configurationSchema": { "fields": { "motorTorque": { "type": "number", "default": 75, "min": 0, "max": 120 } } }
+  },
+  "physics": {
+    "body": { "mass": 3.5, "linearDamping": 0.2, "angularDamping": 0.3 },
+    "colliders": [
+      { "shape": "cylinder", "halfHeight": 0.18, "radius": 0.50, "position": [0, 0, 0], "rotation": [0, 0, 1.5707963267948966], "friction": 2.6, "restitution": 0.02 }
+    ],
+    "actuator": { "kind": "wheel", "socketId": "axle", "axis": [1, 0, 0], "maxForce": 75, "targetSpeed": 8 }
+  },
+  "visual": {
+    "factory": "crawler-track",
+    "revision": 1,
+    "source": "procedural-brief",
+    "sourceCommit": "6e60b5e22419464b4853e01ddb6c0e6f6659a733",
+    "normalization": { "metersPerUnit": 1, "upAxis": "y", "forwardAxis": "z", "origin": "part-frame" },
+    "variants": [
+      { "id": "A", "label": "Xích cao su (Rubber Track)", "factory": "crawler-track" },
+      { "id": "B", "label": "Xích xe tăng thép (Steel Track)", "factory": "crawler-track" }
+    ]
+  },
+  "provenance": { "brief": "art-source/parts/crawler-track/brief.md", "license": "STEM Lab procedural part", "toolCommit": "6e60b5e22419464b4853e01ddb6c0e6f6659a733" }
+}

@@ -17,6 +17,14 @@ function isFormField(target: EventTarget | null): boolean {
   return element?.tagName === "INPUT" || element?.tagName === "TEXTAREA" || element?.tagName === "SELECT" || element?.isContentEditable === true;
 }
 
+function normalizeControlKey(code: string, key: string): string | undefined {
+  if (DRIVE_FORWARD.has(code) || key === "w" || key === "W" || key === "ư" || key === "Ư" || key === "ArrowUp") return "KeyW";
+  if (DRIVE_BACK.has(code) || key === "s" || key === "S" || key === "ArrowDown") return "KeyS";
+  if (STEER_LEFT.has(code) || key === "a" || key === "A" || key === "ArrowLeft") return "KeyA";
+  if (STEER_RIGHT.has(code) || key === "d" || key === "D" || key === "đ" || key === "Đ" || key === "ArrowRight") return "KeyD";
+  return undefined;
+}
+
 export class KeyboardInputSource implements InputSource {
   private readonly pressed = new Set<string>();
   private disposed = false;
@@ -34,16 +42,20 @@ export class KeyboardInputSource implements InputSource {
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
     if (isFormField(event.target)) return;
-    if (DRIVE_FORWARD.has(event.code) || DRIVE_BACK.has(event.code) || STEER_LEFT.has(event.code) || STEER_RIGHT.has(event.code)) {
-      const wasPressed = this.pressed.has(event.code);
-      this.pressed.add(event.code);
-      if (!wasPressed) this.publishControlEvent("keydown", event.code);
+    const normalized = normalizeControlKey(event.code, event.key);
+    if (normalized !== undefined) {
+      const wasPressed = this.pressed.has(normalized);
+      this.pressed.add(normalized);
+      if (!wasPressed) this.publishControlEvent("keydown", normalized);
       event.preventDefault();
     }
   };
 
   private readonly onKeyUp = (event: KeyboardEvent): void => {
-    if (this.pressed.delete(event.code)) this.publishControlEvent("keyup", event.code);
+    const normalized = normalizeControlKey(event.code, event.key);
+    if (normalized !== undefined) {
+      if (this.pressed.delete(normalized)) this.publishControlEvent("keyup", normalized);
+    }
   };
 
   private readonly onBlur = (): void => { this.resetWithReason("blur"); };
@@ -51,15 +63,38 @@ export class KeyboardInputSource implements InputSource {
     if (document.visibilityState !== "visible") this.resetWithReason("visibility-hidden");
   };
 
+  private touchThrottle = 0;
+  private touchSteering = 0;
+
+  public setTouchThrottle(value: number): void {
+    this.touchThrottle = Number.isFinite(value) ? Math.max(-1, Math.min(1, value)) : 0;
+  }
+
+  public setTouchSteering(value: number): void {
+    this.touchSteering = Number.isFinite(value) ? Math.max(-1, Math.min(1, value)) : 0;
+  }
+
   public read(): ControlState {
     const forward = [...DRIVE_FORWARD].some((key) => this.pressed.has(key));
     const reverse = [...DRIVE_BACK].some((key) => this.pressed.has(key));
     const left = [...STEER_LEFT].some((key) => this.pressed.has(key));
     const right = [...STEER_RIGHT].some((key) => this.pressed.has(key));
-    return { throttle: Number(forward) - Number(reverse), steering: Number(right) - Number(left) };
+    const keyThrottle = Number(forward) - Number(reverse);
+    // Steering direction viewed from the rear of the vehicle facing +Z:
+    // +X is to the left of the driver/chase camera, -X is to the right.
+    // Therefore Left press yields +1 steering, and Right press yields -1 steering.
+    const keySteering = Number(left) - Number(right);
+    return {
+      throttle: this.touchThrottle !== 0 ? this.touchThrottle : keyThrottle,
+      steering: this.touchSteering !== 0 ? this.touchSteering : keySteering,
+    };
   }
 
-  public reset(): void { this.resetWithReason("manual"); }
+  public reset(): void {
+    this.touchThrottle = 0;
+    this.touchSteering = 0;
+    this.resetWithReason("manual");
+  }
 
   private resetWithReason(reason: "blur" | "visibility-hidden" | "manual" | "dispose"): void {
     if (this.pressed.size === 0) return;

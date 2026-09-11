@@ -3,10 +3,35 @@ import type { QuaternionTuple, Vector3Tuple } from "../../kernel/math";
 import type { PartPhysicsDefinition } from "../../parts/manifest";
 import type { SimulationFrame } from "./simulation-renderer";
 
+export interface ObstacleSpec {
+  readonly id: string;
+  readonly shape: "cuboid" | "cylinder";
+  readonly position: Vector3Tuple;
+  readonly rotation?: Vector3Tuple;
+  readonly halfExtents?: Vector3Tuple;
+  readonly radius?: number;
+  readonly halfHeight?: number;
+  readonly friction?: number;
+  readonly restitution?: number;
+  readonly color?: number;
+  readonly semantic?: string;
+}
+
+export interface GoalZoneSpec {
+  readonly position: Vector3Tuple;
+  readonly size: Vector3Tuple;
+}
+
 export interface SimulationEnvironment {
   readonly gravity: Vector3Tuple;
   readonly spawn: Vector3Tuple;
   readonly ground: { readonly halfExtents: Vector3Tuple; readonly position: Vector3Tuple };
+  readonly ramp?: { readonly halfExtents: Vector3Tuple; readonly position: Vector3Tuple; readonly rotation: Vector3Tuple } | undefined;
+  readonly obstacles?: readonly ObstacleSpec[] | undefined;
+  readonly goalZone?: GoalZoneSpec | undefined;
+}
+
+export interface DefaultSimulationEnvironment extends SimulationEnvironment {
   readonly ramp: { readonly halfExtents: Vector3Tuple; readonly position: Vector3Tuple; readonly rotation: Vector3Tuple };
 }
 
