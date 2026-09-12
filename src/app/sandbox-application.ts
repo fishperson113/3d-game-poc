@@ -1,5 +1,5 @@
 import type { MachineBlueprint } from "../building/domain/contracts";
-import { createPlacementPreview, findPlacementCandidates, rotatePlacementCandidate, rootTransform, type AssemblyPlacementCandidate } from "../building";
+import { createPlacementPreview, findPlacementCandidates, rotatePlacementCandidate, rootTransform, validatePlacementCandidate, type AssemblyPlacementCandidate } from "../building";
 import { createRuntimeSampleFixture, RUNTIME_SAMPLES, serializePhysicsSpecification, type RuntimeSampleId, type SimulationSession } from "../simulation";
 import { ThreeSimulationRenderer } from "../adapters/three/three-simulation-renderer";
 import { KeyboardInputSource, RapierPhysicsWorld } from "../adapters";
@@ -8,6 +8,7 @@ import type { ApplicationComposition } from "./composition-root";
 import type { RuntimeState } from "../kernel/runtime-contract";
 import { STEM_CHALLENGES, RealtimeChallengeEvaluator, type ChallengeDefinition, type ChallengeProgress } from "../challenge";
 import { soundEffects } from "./audio/sound-effects";
+import { AICompanionService, AITutorWidget, DigitalToPhysicalModal } from "../ai";
 
 interface PlacementState {
   readonly definitionId: string;
@@ -48,6 +49,12 @@ export class SandboxApplication {
   private showWelcomeModal = true;
   private showChallengeModal = false;
   private showAdvancedPanel = false;
+
+  // AI Companion & Digital-to-Physical bridge
+  private readonly aiService: AICompanionService;
+  private readonly aiTutorWidget: AITutorWidget;
+  private readonly digitalToPhysicalModal: DigitalToPhysicalModal;
+  private lastRootPos: readonly [number, number, number] | undefined;
 
   private readonly onTestFault = (event: Event): void => {
     const detail = (event as CustomEvent<{ phase?: string }>).detail;
@@ -157,6 +164,26 @@ export class SandboxApplication {
       const curIndex = this.challenges.findIndex((c) => c.id === this.currentChallengeId);
       const nextChallenge = this.challenges[(curIndex + 1) % this.challenges.length];
       if (nextChallenge !== undefined) void this.selectChallenge(nextChallenge.id);
+    } else if (action === "open-build-modal") {
+      soundEffects.playClick();
+      this.aiService.openBuildModal("build");
+    } else if (action === "open-parent-modal") {
+      soundEffects.playClick();
+      this.aiService.openBuildModal("parent");
+    } else if (action === "open-challenge-build") {
+      soundEffects.playClick();
+      const chId = actionElement.dataset.challengeId;
+      if (chId !== undefined) {
+        this.aiService.setChallenge(chId);
+        this.aiService.openBuildModal("build");
+      }
+    } else if (action === "open-challenge-parent") {
+      soundEffects.playClick();
+      const chId = actionElement.dataset.challengeId;
+      if (chId !== undefined) {
+        this.aiService.setChallenge(chId);
+        this.aiService.openBuildModal("parent");
+      }
     }
   };
 
@@ -192,8 +219,7 @@ export class SandboxApplication {
       const selected = RUNTIME_SAMPLES.find((sample) => sample.id === target.value);
       if (selected === undefined) return;
       this.selectedSampleId = selected.id;
-      this.feedback = { tone: "neutral", message: `Đã chọn ${selected.label}. Nhấp 'Nạp xe' để đưa vào xưởng lắp ráp.` };
-      this.refreshView();
+      void this.loadSample();
       return;
     }
     if (target?.dataset.action !== "variant" || target.dataset.partId === undefined) return;
@@ -256,6 +282,7 @@ export class SandboxApplication {
           if (evaluation.status === "completed") {
             soundEffects.playVictory();
             const current = this.getCurrentChallenge();
+            this.aiService.triggerCelebration(current.title);
             const existingStars = this.challengeProgress[current.id]?.stars ?? 0;
             this.challengeProgress[current.id] = {
               completed: true,
@@ -278,6 +305,33 @@ export class SandboxApplication {
             };
             void this.stopAndReset();
             return;
+          }
+
+          if (rootTransform !== undefined) {
+            const controls = this.session.getLastControls();
+            const pos = rootTransform.position;
+            const rot = rootTransform.rotation;
+            const linVel = this.lastRootPos
+              ? ([
+                  (pos[0] - this.lastRootPos[0]) / Math.max(delta, 0.001),
+                  (pos[1] - this.lastRootPos[1]) / Math.max(delta, 0.001),
+                  (pos[2] - this.lastRootPos[2]) / Math.max(delta, 0.001),
+                ] as const)
+              : undefined;
+            this.lastRootPos = pos;
+
+            this.aiService.processTelemetry(
+              {
+                position: pos,
+                linearVelocity: linVel,
+                rotation: rot,
+                elapsedSeconds: evaluation.elapsedSeconds,
+                throttle: controls.throttle,
+                steering: controls.steering,
+                challengeId: this.currentChallengeId,
+              },
+              this.blueprint
+            );
           }
 
           // Sound update
@@ -322,6 +376,19 @@ export class SandboxApplication {
     this.renderer.setEnvironment(initialChallenge.environment);
     this.evaluator = new RealtimeChallengeEvaluator(initialChallenge);
 
+    // Initialize AI Companion and widgets
+    this.aiService = new AICompanionService();
+    this.aiTutorWidget = new AITutorWidget(this.host, this.aiService, () => {
+      this.aiService.openBuildModal("build");
+    });
+    this.digitalToPhysicalModal = new DigitalToPhysicalModal(
+      this.host,
+      this.aiService,
+      () => this.blueprint,
+      (chId) => this.challenges.find((c) => c.id === chId)?.title ?? this.getCurrentChallenge().title
+    );
+    this.aiService.setChallenge(initialChallenge.id);
+
     this.host.addEventListener("click", this.onClick);
     this.host.addEventListener("change", this.onChange);
     this.host.addEventListener("input", this.onInput);
@@ -356,9 +423,9 @@ export class SandboxApplication {
     try {
       const created = await this.composition.building.create("sandbox-machine");
       if (!created.ok) throw new Error(created.error.code);
-      await this.syncBlueprint();
+      await this.loadSample();
       this.state = "Building";
-      this.feedback = { tone: "good", message: "Xưởng chế tạo sẵn sàng! Hãy chọn Khung xe để đặt xuống sàn." };
+      this.feedback = { tone: "good", message: "Xưởng chế tạo sẵn sàng! Chiếc xe đã sẵn sàng tại vạch xuất phát." };
       this.refreshView();
     } catch (error) {
       this.feedback = { tone: "bad", message: `Khởi động thất bại: ${error instanceof Error ? error.message : String(error)}` };
@@ -371,6 +438,8 @@ export class SandboxApplication {
     this.disposed = true;
     if (this.rafId !== undefined) cancelAnimationFrame(this.rafId);
     this.rafId = undefined;
+    this.aiTutorWidget.dispose();
+    this.digitalToPhysicalModal.dispose();
     soundEffects.stopMotor();
     window.removeEventListener("keydown", this.onKeyDown);
     this.host.removeEventListener("click", this.onClick);
@@ -390,10 +459,14 @@ export class SandboxApplication {
   public async selectChallenge(challengeId: string): Promise<void> {
     if (this.state === "Running") await this.stopAndReset();
     this.currentChallengeId = challengeId;
+    this.aiService.setChallenge(challengeId);
     this.showChallengeModal = false;
     const challenge = this.getCurrentChallenge();
     this.evaluator = new RealtimeChallengeEvaluator(challenge);
     this.renderer.setEnvironment(challenge.environment);
+    if (this.blueprint.parts.length === 0) {
+      await this.loadSample();
+    }
     this.renderer.setBlueprint(this.blueprint, this.composition.catalog, this.variants);
     this.renderer.resetCamera();
     this.feedback = { tone: "good", message: `Đã nạp ${challenge.title}: ${challenge.subtitle}` };
@@ -474,8 +547,14 @@ export class SandboxApplication {
     const current = this.placement.candidates[this.placement.candidateIndex];
     if (current === undefined) return;
     const rotated = rotatePlacementCandidate(this.blueprint, this.placement.definitionId, current, this.composition.catalog, this.placement.rotationSteps);
-    this.renderer.setGhost({ partId: this.placement.partId, definitionId: this.placement.definitionId, transform: rotated.transform, valid: true });
+    const validation = validatePlacementCandidate(this.blueprint, this.placement.definitionId, current, this.composition.catalog, this.placement.rotationSteps);
+    this.renderer.setGhost({ partId: this.placement.partId, definitionId: this.placement.definitionId, transform: rotated.transform, valid: validation.valid });
     this.renderer.setSocketHighlights([`${current.targetPartId}::${current.targetSocketId}`]);
+    if (!validation.valid) {
+      this.feedback = { tone: "bad", message: `⚠️ ${validation.reason ?? "Vị trí hoặc hướng xoay không hợp lệ"}` };
+    } else {
+      this.feedback = { tone: "neutral", message: "Vị trí gắn hợp lệ! Hãy bấm 'Xác nhận gắn' (hoặc nhấn R để xoay)." };
+    }
   }
 
   private changeCandidate(offset: number): void {
@@ -507,6 +586,13 @@ export class SandboxApplication {
     if (placement === undefined || this.state !== "Building") return;
     const candidate = placement.candidates[placement.candidateIndex];
     if (candidate === undefined) return;
+    const validation = validatePlacementCandidate(this.blueprint, placement.definitionId, candidate, this.composition.catalog, placement.rotationSteps);
+    if (!validation.valid) {
+      soundEffects.playBoing();
+      this.feedback = { tone: "bad", message: `❌ Không thể gắn: ${validation.reason ?? "Vị trí không hợp lệ!"}` };
+      this.refreshView();
+      return;
+    }
     const finalPartId = this.blueprint.parts.some((p) => String(p.id) === placement.partId)
       ? this.generateUniquePartId(placement.definitionId)
       : placement.partId;
@@ -527,6 +613,9 @@ export class SandboxApplication {
   private async start(): Promise<void> {
     if (this.state !== "Building") return;
     if (!this.rendererReady) { this.reject("renderer.webgl-context-unavailable"); return; }
+    if (this.blueprint.parts.length === 0) {
+      await this.loadSample();
+    }
     this.state = "Compiling";
     this.feedback = { tone: "neutral", message: "Đang khởi động cỗ máy và nạp mô phỏng vật lý Rapier…" };
     this.refreshView();
@@ -552,6 +641,8 @@ export class SandboxApplication {
       this.session.start();
       this.evaluator.reset();
       this.evaluator.start();
+      this.aiService.recordAttemptStart(this.currentChallengeId);
+      this.lastRootPos = undefined;
       this.updatePhysicsDiagnostics();
       this.state = "Running";
       const hasDrive = compiled.value.specification.actuators.some((actuator) => actuator.action === "drive");
@@ -744,13 +835,24 @@ export class SandboxApplication {
     if (this.disposed) return;
     const events = this.composition.memoryLog.snapshot();
     const currentCandidate = this.placement?.candidates[this.placement.candidateIndex];
+    const validation = this.placement && currentCandidate
+      ? validatePlacementCandidate(this.blueprint, this.placement.definitionId, currentCandidate, this.composition.catalog, this.placement.rotationSteps)
+      : undefined;
     this.view.render({
       state: this.state,
       rendererReady: this.rendererReady,
       blueprint: this.blueprint,
       ...(this.selectedPartId === undefined ? {} : { selectedPartId: this.selectedPartId }),
       ...(this.feedback === undefined ? {} : { feedback: this.feedback }),
-      ...(this.placement === undefined ? {} : { placement: { definitionId: this.placement.definitionId, candidateIndex: this.placement.candidateIndex, candidateCount: this.placement.candidates.length, valid: true } }),
+      ...(this.placement === undefined ? {} : {
+        placement: {
+          definitionId: this.placement.definitionId,
+          candidateIndex: this.placement.candidateIndex,
+          candidateCount: this.placement.candidates.length,
+          valid: validation?.valid ?? true,
+          reason: validation?.reason,
+        },
+      }),
       ...(currentCandidate === undefined ? {} : { placementTarget: { targetPartId: currentCandidate.targetPartId, targetSocketId: currentCandidate.targetSocketId, sourceSocketId: currentCandidate.sourceSocketId } }),
       assemblyGuide: this.getAssemblyGuide(),
       samples: RUNTIME_SAMPLES,
