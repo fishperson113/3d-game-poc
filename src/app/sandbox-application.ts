@@ -184,6 +184,15 @@ export class SandboxApplication {
         this.aiService.setChallenge(chId);
         this.aiService.openBuildModal("parent");
       }
+    } else if (action === "mobile-open-parent-sample") {
+      soundEffects.playClick();
+      const mobileOverlay = this.host.querySelector<HTMLElement>("[data-role=mobile-fallback]");
+      if (mobileOverlay) mobileOverlay.style.display = "none";
+      this.aiService.openBuildModal("parent");
+    } else if (action === "dismiss-mobile-fallback") {
+      soundEffects.playClick();
+      const mobileOverlay = this.host.querySelector<HTMLElement>("[data-role=mobile-fallback]");
+      if (mobileOverlay) mobileOverlay.style.display = "none";
     }
   };
 
