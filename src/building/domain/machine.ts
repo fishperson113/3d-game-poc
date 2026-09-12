@@ -2,6 +2,7 @@ import type { JsonValue } from "../../kernel/json";
 import type { Result } from "../../kernel/result";
 import { asConnectionId, asMachineId, asPartId, asControlBindingId, type Connection, type ConnectionInput, type ControlBinding, type ControlBindingInput, type DomainEvent, type MachineBlueprint, type MachineCommandError, type MachineMode, type PartInstance, type PartTransform, type RotationAxis, type SocketRef } from "./contracts";
 import { normalizePartConfiguration, type PartDefinition, type SocketDefinition } from "./part-definition";
+import { validateAttachment } from "./attachment-validator";
 import { parseMachineBlueprint } from "./blueprint";
 
 export interface MachineDependencies {
@@ -260,6 +261,13 @@ export class Machine {
     if (left === undefined || right === undefined) return { ok: false, error: error("building.socket.not-found") };
     if (sameEndpoint(connection.a, connection.b)) return { ok: false, error: error("building.connection.same-socket") };
     if (!socketsCompatible(left.socket, right.socket)) return { ok: false, error: error("building.socket.incompatible") };
+    const attachmentCheck = validateAttachment(right.definition, right.socket, left.definition, left.socket);
+    if (!attachmentCheck.valid) {
+      const reverseCheck = validateAttachment(left.definition, left.socket, right.definition, right.socket);
+      if (!reverseCheck.valid) {
+        return { ok: false, error: error(attachmentCheck.code ?? "building.attachment.mechanically-incompatible", { reason: attachmentCheck.reason ?? "Không tương thích cơ khí" }) };
+      }
+    }
     const occupied = (reference: SocketRef, socket: SocketDefinition): boolean => socket.singleUse !== false && this.state.connections.some((candidate) => sameEndpoint(candidate.a, reference) || sameEndpoint(candidate.b, reference));
     if (occupied(connection.a, left.socket) || occupied(connection.b, right.socket)) return { ok: false, error: error("building.socket.occupied") };
     const jointType: string = connection.joint.type;

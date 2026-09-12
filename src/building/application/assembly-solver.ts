@@ -3,6 +3,7 @@ import type { PartDefinition, SocketDefinition } from "../domain/part-definition
 import { snapPartTransform, worldSocketFrame } from "../../kernel/math";
 import type { AddPartInput, PlaceAndConnectInput } from "../domain/machine";
 import type { PartCatalog } from "../ports/part-catalog";
+import { validateAttachment } from "../domain/attachment-validator";
 
 export interface AssemblyPlacementCandidate {
   readonly targetPartId: string;
@@ -13,6 +14,12 @@ export interface AssemblyPlacementCandidate {
 
 export interface AssemblyPlacementPreview extends AssemblyPlacementCandidate {
   readonly placement: PlaceAndConnectInput;
+}
+
+export interface PlacementValidationResult {
+  readonly valid: boolean;
+  readonly reason?: string;
+  readonly code?: string;
 }
 
 function compatible(left: SocketDefinition, right: SocketDefinition): boolean {
@@ -63,6 +70,8 @@ export function findPlacementCandidates(blueprint: MachineBlueprint, definitionI
       const targetFrame = worldSocketFrame(targetPart.transform, targetSocket);
       for (const sourceSocket of definition.sockets) {
         if (!compatible(targetSocket, sourceSocket)) continue;
+        const attachment = validateAttachment(definition, sourceSocket, targetDefinition, targetSocket);
+        if (!attachment.valid) continue;
         candidates.push({ targetPartId: targetPart.id, targetSocketId: targetSocket.id, sourceSocketId: sourceSocket.id, transform: snapPartTransform(targetFrame, sourceSocket) });
       }
     }
@@ -98,6 +107,57 @@ export function rotatePlacementCandidate(blueprint: MachineBlueprint, definition
   const sourceSocket = sourceDefinition?.sockets.find((socket) => socket.id === candidate.sourceSocketId);
   if (targetPart === undefined || targetSocket === undefined || sourceSocket === undefined) return candidate;
   return { ...candidate, transform: snapPartTransform(worldSocketFrame(targetPart.transform, targetSocket), sourceSocket, quarterTurns) };
+}
+
+export function validatePlacementCandidate(
+  blueprint: MachineBlueprint,
+  definitionId: string,
+  candidate: AssemblyPlacementCandidate,
+  catalog: PartCatalog,
+  quarterTurns = 0
+): PlacementValidationResult {
+  const targetPart = blueprint.parts.find((part) => part.id === candidate.targetPartId);
+  const targetDefinition = targetPart === undefined ? undefined : catalog.get(targetPart.definitionId);
+  const sourceDefinition = catalog.get(definitionId);
+  const targetSocket = targetDefinition?.sockets.find((socket) => socket.id === candidate.targetSocketId);
+  const sourceSocket = sourceDefinition?.sockets.find((socket) => socket.id === candidate.sourceSocketId);
+
+  if (targetPart === undefined || targetDefinition === undefined || sourceDefinition === undefined || targetSocket === undefined || sourceSocket === undefined) {
+    return { valid: false, code: "building.placement.missing-definition", reason: "Không tìm thấy định nghĩa linh kiện hoặc cổng kết nối." };
+  }
+
+  const mechanical = validateAttachment(sourceDefinition, sourceSocket, targetDefinition, targetSocket);
+  if (!mechanical.valid) return mechanical;
+
+  // Orientation & angle validation
+  if (definitionId === "core.powered-wheel" || definitionId === "core.crawler-track") {
+    if (quarterTurns % 2 !== 0) {
+      return {
+        valid: false,
+        code: "building.placement.invalid-wheel-angle",
+        reason: "Bánh xe đang bị xoay ngang (90°). Hãy nhấn phím R để xoay bánh đúng hướng tiến/lùi!",
+      };
+    }
+  }
+
+  if (definitionId === "core.steering-hinge") {
+    if (quarterTurns % 2 !== 0) {
+      return {
+        valid: false,
+        code: "building.placement.invalid-steering-axis",
+        reason: "Trục xoay của khớp lái phải thẳng đứng để rẽ trái/phải. Hãy nhấn phím R để xoay lại!",
+      };
+    }
+    if (quarterTurns === 2) {
+      return {
+        valid: false,
+        code: "building.placement.inward-steering",
+        reason: "Khớp bẻ lái đang quay ngược vào thân xe. Hãy nhấn phím R để quay khớp hướng ra ngoài!",
+      };
+    }
+  }
+
+  return { valid: true };
 }
 
 export function rootTransform(): PartTransform {

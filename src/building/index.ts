@@ -4,8 +4,10 @@ export type { ConfigurationField, ConfigurationFieldType, ConfigurationValidatio
 export { normalizePartConfiguration } from "./domain/part-definition";
 export { Machine } from "./domain/machine";
 export type { AddPartInput, MachineChange, MachineDependencies, PlaceAndConnectInput } from "./domain/machine";
-export { createPlacementPreview, findPlacementCandidates, getSocketFrame, rootTransform, rotatePlacementCandidate } from "./application/assembly-solver";
-export type { AssemblyPlacementCandidate, AssemblyPlacementPreview } from "./application/assembly-solver";
+export { getPartCategory, validateAttachment } from "./domain/attachment-validator";
+export type { AttachmentValidationResult, PartMechanicalCategory } from "./domain/attachment-validator";
+export { createPlacementPreview, findPlacementCandidates, getSocketFrame, rootTransform, rotatePlacementCandidate, validatePlacementCandidate } from "./application/assembly-solver";
+export type { AssemblyPlacementCandidate, AssemblyPlacementPreview, PlacementValidationResult } from "./application/assembly-solver";
 export { exportMachineBlueprint, parseMachineBlueprint, validateBlueprintSemantics } from "./domain/blueprint";
 export type { BlueprintCatalog, BlueprintValidationError } from "./domain/blueprint";
 export { MachineBuildingService } from "./application/machine-building-service";

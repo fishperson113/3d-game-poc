@@ -8,7 +8,7 @@ export interface AppViewModel {
   readonly blueprint: MachineBlueprint;
   readonly selectedPartId?: string | undefined;
   readonly feedback?: { readonly tone: "good" | "bad" | "neutral"; readonly message: string } | undefined;
-  readonly placement?: { readonly definitionId: string; readonly candidateIndex: number; readonly candidateCount: number; readonly valid: boolean } | undefined;
+  readonly placement?: { readonly definitionId: string; readonly candidateIndex: number; readonly candidateCount: number; readonly valid: boolean; readonly reason?: string | undefined } | undefined;
   readonly placementTarget?: { readonly targetPartId: string; readonly targetSocketId: string; readonly sourceSocketId: string } | undefined;
   readonly assemblyGuide: readonly string[];
   readonly samples: readonly { readonly id: string; readonly label: string; readonly description: string }[];
@@ -76,7 +76,8 @@ export class AppView {
             <span>🚗 Xe mẫu:</span>
             <select data-role="sample-select" data-action="sample-select"></select>
           </label>
-          <button data-action="sample" class="btn-stem btn-load-sample">Nạp xe</button>
+          <button data-action="sample" class="btn-stem btn-load-sample" title="Nạp ngay xe mẫu đã chọn vào xưởng">📥 Nạp Xe</button>
+          <div class="toolbar-divider"></div>
           <button data-action="reset-camera" class="btn-stem" title="Đặt lại góc nhìn đẹp từ phía sau xe">🎥 Góc Nhìn Chuẩn</button>
           <button data-action="toggle-advanced" class="btn-stem btn-advanced" title="Mở bảng thông số chuyên sâu">⚙️ Nâng Cao</button>
           <span class="toolbar-hint">💡 Mẹo: Bấm chọn phụ tùng ➔ Nhấn <b>Xác nhận gắn</b>. Phím <kbd>R</kbd> để xoay, <kbd>Delete</kbd> để xóa.</span>
@@ -203,6 +204,7 @@ export class AppView {
             <p class="victory-message" data-role="victory-message">Xe của bạn đã cán đích thành công!</p>
             <div class="victory-actions">
               <button class="btn-stem btn-big btn-success" data-action="next-level">MÀN KẾ TIẾP ➡️</button>
+              <button class="btn-stem btn-big btn-primary" data-action="open-build-modal">LẮP RÁP THỰC TẾ 📦</button>
               <button class="btn-stem btn-big" data-action="close-victory">Ở Lại Xưởng 🛠️</button>
               <button class="btn-stem btn-big" data-action="retry">Chơi Lại 🔁</button>
             </div>
@@ -304,10 +306,32 @@ export class AppView {
       this.element("placement-actions").style.display = "none";
     } else {
       modeLabel.textContent = "🔧 CHẾ ĐỘ XƯỞNG LẮP RÁP";
-      placementLabel.textContent = placement === undefined
-        ? (model.blueprint.parts.length === 0 ? "Sẵn sàng đặt khối móng đầu tiên." : "Chọn linh kiện bên trái để gắn vào xe. Nhấn '🎮 Lái Thử' để bắt đầu lái!")
-        : `${placement.definitionId} ➔ gắn vào ${target?.targetPartId ?? "target"}:${target?.targetSocketId ?? "socket"} (${String(placement.candidateIndex + 1)}/${String(placement.candidateCount)})`;
+      if (placement === undefined) {
+        placementLabel.textContent = model.blueprint.parts.length === 0 ? "Sẵn sàng đặt khối móng đầu tiên." : "Chọn linh kiện bên trái để gắn vào xe. Nhấn '🎮 Lái Thử' để bắt đầu lái!";
+      } else {
+        const targetStr = `${target?.targetPartId ?? "target"}:${target?.targetSocketId ?? "socket"}`;
+        const countStr = `(${String(placement.candidateIndex + 1)}/${String(placement.candidateCount)})`;
+        const defName = placement.definitionId.replace(/^core\./, "");
+        if (placement.valid) {
+          placementLabel.innerHTML = `<span style="color:#83d68c;font-weight:700">✅ HỢP LỆ</span> ${defName} ➔ ${targetStr} ${countStr}`;
+        } else {
+          placementLabel.innerHTML = `<span style="color:#e76f67;font-weight:700">❌ CHƯA HỢP LỆ:</span> ${placement.reason ?? "Không thể gắn tại đây"} ${countStr}`;
+        }
+      }
       this.element("placement-actions").style.display = placement === undefined ? "none" : "flex";
+      const confirmBtn = this.root.querySelector<HTMLButtonElement>("[data-action=confirm-placement]");
+      if (confirmBtn) {
+        confirmBtn.disabled = placement !== undefined && !placement.valid;
+        if (placement !== undefined && !placement.valid) {
+          confirmBtn.style.opacity = "0.5";
+          confirmBtn.style.cursor = "not-allowed";
+          confirmBtn.title = placement.reason ?? "Vị trí hoặc hướng không hợp lệ";
+        } else {
+          confirmBtn.style.opacity = "1";
+          confirmBtn.style.cursor = "pointer";
+          confirmBtn.title = "Gắn cố định vào xe";
+        }
+      }
     }
 
     // Assembly guide
@@ -361,17 +385,46 @@ export class AppView {
       const grid = this.element("challenges-grid");
       grid.innerHTML = model.challenges.map((c) => {
         const prog = model.challengeProgress[c.id];
+        const isCompleted = (prog?.stars ?? 0) > 0 || prog?.completed === true;
         const starsStr = prog?.stars ? "⭐".repeat(prog.stars) : "☆☆☆";
         const isCurrent = c.id === model.currentChallengeId;
         return `
-          <div class="challenge-item ${isCurrent ? "active" : ""}" data-action="select-challenge" data-challenge-id="${c.id}">
-            <div class="ch-icon">${c.icon}</div>
-            <div class="ch-body">
-              <div class="ch-title">Màn ${String(c.number)}: ${c.title}</div>
-              <div class="ch-sub">${c.subtitle}</div>
-              <div class="ch-tip">${c.stemTip}</div>
+          <div class="challenge-item ${isCurrent ? "active" : ""} ${isCompleted ? "completed" : ""}">
+            <div class="ch-main-row" data-action="select-challenge" data-challenge-id="${c.id}">
+              <div class="ch-icon">${c.icon}</div>
+              <div class="ch-body">
+                <div class="ch-title-row">
+                  <span class="ch-title">Màn ${String(c.number)}: ${c.title}</span>
+                  ${isCurrent ? '<span class="ch-current-badge">Đang chọn</span>' : ""}
+                </div>
+                <div class="ch-sub">${c.subtitle}</div>
+                <div class="ch-tip">${c.stemTip}</div>
+              </div>
+              <div class="ch-stars">${starsStr}</div>
             </div>
-            <div class="ch-stars">${starsStr}</div>
+            <div class="ch-footer-row">
+              <button class="btn-stem btn-stem-sm btn-play-challenge" data-action="select-challenge" data-challenge-id="${c.id}">
+                ${isCurrent ? "✓ Đang Chơi" : "🎮 Chọn Màn Này"}
+              </button>
+              ${
+                isCompleted
+                  ? `
+                <div class="ch-extra-actions">
+                  <button class="btn-stem btn-stem-sm btn-build-action" data-action="open-challenge-build" data-challenge-id="${c.id}" title="Xem Cẩm Nang Lắp Ráp Ra Đời Thật cho màn này">
+                    📦 Lắp Ráp Thật
+                  </button>
+                  <button class="btn-stem btn-stem-sm btn-parent-action" data-action="open-challenge-parent" data-challenge-id="${c.id}" title="Báo Cáo Năng Lực Dành Cho Phụ Huynh">
+                    👨‍👩‍👧 Báo Cáo
+                  </button>
+                </div>
+              `
+                  : `
+                <span class="ch-locked-tag" title="Vượt qua thử thách này để mở khóa Cẩm nang lắp ráp & Báo cáo phụ huynh">
+                  🔒 Hoàn thành để mở khóa cẩm nang
+                </span>
+              `
+              }
+            </div>
           </div>`;
       }).join("");
     }
