@@ -229,6 +229,49 @@ export class AppView {
             </div>
           </div>
         </div>
+
+        <!-- MODAL 5: Mobile Device Fallback Overlay -->
+        <div class="mobile-fallback-overlay" data-role="mobile-fallback">
+          <div class="mobile-fallback-card">
+            <div class="mobile-badge-tag">🔬 KHUYÊN DÙNG MÀN HÌNH LỚN</div>
+            <div class="mobile-fallback-avatar">💻 🏎️ 🤖</div>
+            <h2>Trải Nghiệm Tốt Nhất Trên Máy Tính Hoặc iPad!</h2>
+            <p class="mobile-fallback-desc">
+              Để bé có thể quan sát mô hình 3D đa chiều, lắp ghép các khớp nối chính xác và đối chiếu trực tiếp với bộ kit linh kiện STEM ngoài đời thực, vui lòng mở ứng dụng trên <b>Laptop/PC</b> hoặc <b>Máy tính bảng (Tablet ngang)</b> nhé!
+            </p>
+            <div class="mobile-reasons-list">
+              <div class="mobile-reason-item">
+                <span class="reason-icon">🖥️</span>
+                <div>
+                  <strong>Màn hình rộng rãi</strong>
+                  <p>Dễ dàng thao tác camera 3D, chọn cổng nối và lái xe mượt mà.</p>
+                </div>
+              </div>
+              <div class="mobile-reason-item">
+                <span class="reason-icon">🛠️</span>
+                <div>
+                  <strong>Cầu nối lắp ráp thật</strong>
+                  <p>Đặt màn hình cạnh khay linh kiện để đối chiếu từng bước lắp ráp ngoài đời.</p>
+                </div>
+              </div>
+              <div class="mobile-reason-item">
+                <span class="reason-icon">🧠</span>
+                <div>
+                  <strong>Trợ giảng AI Socratic</strong>
+                  <p>Đồng hành, gợi ý tư duy khoa học và báo cáo năng lực cho phụ huynh.</p>
+                </div>
+              </div>
+            </div>
+            <div class="mobile-fallback-actions">
+              <button class="btn-stem btn-primary btn-mobile-action" data-action="mobile-open-parent-sample">
+                📊 Xem Thử Báo Cáo Phụ Huynh
+              </button>
+              <button class="btn-stem btn-secondary btn-mobile-dismiss" data-action="dismiss-mobile-fallback">
+                👁️ Vẫn tiếp tục xem trên điện thoại
+              </button>
+            </div>
+          </div>
+        </div>
       </div>`;
 
     const paletteHost = this.element("palette");
