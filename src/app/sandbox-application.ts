@@ -1,11 +1,13 @@
 import type { MachineBlueprint } from "../building/domain/contracts";
 import { createPlacementPreview, findPlacementCandidates, rotatePlacementCandidate, rootTransform, type AssemblyPlacementCandidate } from "../building";
-import { createRuntimeSampleFixture, defaultSimulationEnvironment, RUNTIME_SAMPLES, serializePhysicsSpecification, type RuntimeSampleId, type SimulationSession } from "../simulation";
+import { createRuntimeSampleFixture, RUNTIME_SAMPLES, serializePhysicsSpecification, type RuntimeSampleId, type SimulationSession } from "../simulation";
 import { ThreeSimulationRenderer } from "../adapters/three/three-simulation-renderer";
 import { KeyboardInputSource, RapierPhysicsWorld } from "../adapters";
 import { AppView, type AppViewModel } from "./ui/app-view";
 import type { ApplicationComposition } from "./composition-root";
 import type { RuntimeState } from "../kernel/runtime-contract";
+import { STEM_CHALLENGES, RealtimeChallengeEvaluator, type ChallengeDefinition, type ChallengeProgress } from "../challenge";
+import { soundEffects } from "./audio/sound-effects";
 
 interface PlacementState {
   readonly definitionId: string;
@@ -23,7 +25,7 @@ export class SandboxApplication {
   private selectedPartId: string | undefined;
   private placement: PlacementState | undefined;
   private selectedSampleId: RuntimeSampleId = "four-wheel-scout";
-  private feedback: AppViewModel["feedback"] = { tone: "neutral", message: "Loading authoritative part manifests…" };
+  private feedback: AppViewModel["feedback"] = { tone: "neutral", message: "Đang khởi động phòng thí nghiệm STEM…" };
   private readonly variants: Record<string, string> = { "core.structural-block": "A", "core.powered-wheel": "A", "core.steering-hinge": "A" };
   private eventFilter = "";
   private session: SimulationSession | undefined;
@@ -34,6 +36,19 @@ export class SandboxApplication {
   private rendererReady = true;
   private pendingFrameFault: Error | undefined;
   private pendingReleaseFailures = 0;
+
+  // Gamification & Challenge state
+  private readonly challenges: readonly ChallengeDefinition[] = STEM_CHALLENGES;
+  private currentChallengeId = "warmup";
+  private challengeProgress: Record<string, ChallengeProgress> = {};
+  private evaluator: RealtimeChallengeEvaluator;
+  private gameMode: "campaign" | "creative" = "campaign";
+  private victoryState: { stars: number; timeSeconds: number; message: string } | undefined;
+  private failState: { message: string; stemTip: string } | undefined;
+  private showWelcomeModal = true;
+  private showChallengeModal = false;
+  private showAdvancedPanel = false;
+
   private readonly onTestFault = (event: Event): void => {
     const detail = (event as CustomEvent<{ phase?: string }>).detail;
     if (detail.phase === "frame") this.pendingFrameFault = new Error("test.injected-frame-failure");
@@ -42,26 +57,133 @@ export class SandboxApplication {
   private disposed = false;
   private readonly unsubscribeLog: () => void;
 
+  private getCurrentChallenge(): ChallengeDefinition {
+    const found = this.challenges.find((c) => c.id === this.currentChallengeId);
+    if (found !== undefined) return found;
+    const first = this.challenges[0];
+    if (first !== undefined) return first;
+    const fallback = STEM_CHALLENGES[0];
+    if (fallback !== undefined) return fallback;
+    throw new Error("No challenges available");
+  }
+
   private readonly onClick = (event: MouseEvent): void => {
     const target = event.target as HTMLElement | null;
     const actionElement = target?.closest<HTMLElement>("[data-action]");
     if (actionElement === null || actionElement === undefined) return;
     const action = actionElement.dataset.action;
     if (action === undefined) return;
-    if (action === "palette") void this.beginPlacement(actionElement.dataset.partId).catch((error: unknown) => { this.reject(error instanceof Error ? error.message : String(error)); });
-    else if (action === "start") void this.start();
-    else if (action === "retry") void this.retry();
-    else if (action === "stop" || action === "reset") void this.stopAndReset();
-    else if (action === "sample") void this.loadSample();
-    else if (action === "confirm-placement") void this.confirmPlacement();
-    else if (action === "cancel-placement") this.cancelPlacement();
-    else if (action === "next-socket") this.changeCandidate(1);
-    else if (action === "previous-socket") this.changeCandidate(-1);
-    else if (action === "rotate-placement") this.rotatePlacement();
-    else if (action === "rotate-selected") void this.rotateSelected();
-    else if (action === "delete-selected") void this.deleteSelected();
-    else if (action === "disconnect") void this.disconnect(actionElement.dataset.connectionId);
-    else if (action === "export") this.exportEvents();
+
+    if (action === "palette") {
+      soundEffects.playClick();
+      void this.beginPlacement(actionElement.dataset.partId).catch((error: unknown) => { this.reject(error instanceof Error ? error.message : String(error)); });
+    } else if (action === "start") {
+      soundEffects.playClick();
+      void this.start();
+    } else if (action === "retry") {
+      soundEffects.playClick();
+      void this.retry();
+    } else if (action === "stop" || action === "reset") {
+      soundEffects.playClick();
+      void this.stopAndReset();
+    } else if (action === "sample") {
+      soundEffects.playClick();
+      void this.loadSample();
+    } else if (action === "confirm-placement") {
+      void this.confirmPlacement();
+    } else if (action === "cancel-placement") {
+      soundEffects.playClick();
+      this.cancelPlacement();
+    } else if (action === "next-socket") {
+      soundEffects.playClick();
+      this.changeCandidate(1);
+    } else if (action === "previous-socket") {
+      soundEffects.playClick();
+      this.changeCandidate(-1);
+    } else if (action === "rotate-placement") {
+      soundEffects.playClick();
+      this.rotatePlacement();
+    } else if (action === "rotate-selected") {
+      soundEffects.playClick();
+      void this.rotateSelected();
+    } else if (action === "delete-selected") {
+      soundEffects.playClick();
+      void this.deleteSelected();
+    } else if (action === "disconnect") {
+      soundEffects.playClick();
+      void this.disconnect(actionElement.dataset.connectionId);
+    } else if (action === "export") {
+      this.exportEvents();
+    } else if (action === "open-welcome") {
+      soundEffects.playClick();
+      this.showWelcomeModal = true;
+      this.refreshView();
+    } else if (action === "close-welcome") {
+      soundEffects.playClick();
+      this.showWelcomeModal = false;
+      this.refreshView();
+    } else if (action === "open-challenges") {
+      soundEffects.playClick();
+      this.showChallengeModal = true;
+      this.refreshView();
+    } else if (action === "close-challenges") {
+      soundEffects.playClick();
+      this.showChallengeModal = false;
+      this.refreshView();
+    } else if (action === "select-challenge") {
+      const chId = actionElement.dataset.challengeId;
+      if (chId !== undefined) void this.selectChallenge(chId);
+    } else if (action === "toggle-sound") {
+      soundEffects.toggleMute();
+      this.refreshView();
+    } else if (action === "toggle-advanced") {
+      soundEffects.playClick();
+      this.showAdvancedPanel = !this.showAdvancedPanel;
+      this.refreshView();
+    } else if (action === "reset-camera") {
+      soundEffects.playClick();
+      this.renderer.resetCamera();
+    } else if (action === "close-victory") {
+      soundEffects.playClick();
+      this.victoryState = undefined;
+      void this.stopAndReset();
+    } else if (action === "close-fail") {
+      soundEffects.playClick();
+      this.failState = undefined;
+      void this.stopAndReset();
+    } else if (action === "next-level") {
+      soundEffects.playClick();
+      this.victoryState = undefined;
+      const curIndex = this.challenges.findIndex((c) => c.id === this.currentChallengeId);
+      const nextChallenge = this.challenges[(curIndex + 1) % this.challenges.length];
+      if (nextChallenge !== undefined) void this.selectChallenge(nextChallenge.id);
+    }
+  };
+
+  private readonly onPointerDownDrive = (event: PointerEvent): void => {
+    const target = event.target as HTMLElement | null;
+    const driveBtn = target?.closest<HTMLElement>("[data-drive]");
+    if (!driveBtn) return;
+    const drive = driveBtn.dataset.drive;
+    const input = this.session?.getInput();
+    if (input && input instanceof KeyboardInputSource) {
+      if (drive === "forward") input.setTouchThrottle(1);
+      else if (drive === "backward") input.setTouchThrottle(-1);
+      else if (drive === "left") input.setTouchSteering(1);
+      else if (drive === "right") input.setTouchSteering(-1);
+    }
+  };
+
+  private readonly onPointerUpDrive = (event: PointerEvent): void => {
+    const target = event.target as HTMLElement | null;
+    const driveBtn = target?.closest<HTMLElement>("[data-drive]");
+    if (!driveBtn) return;
+    const drive = driveBtn.dataset.drive;
+    const input = this.session?.getInput();
+    if (input && input instanceof KeyboardInputSource) {
+      if (drive === "forward" || drive === "backward") input.setTouchThrottle(0);
+      if (drive === "left" || drive === "right") input.setTouchSteering(0);
+    }
   };
 
   private readonly onChange = (event: Event): void => {
@@ -70,7 +192,7 @@ export class SandboxApplication {
       const selected = RUNTIME_SAMPLES.find((sample) => sample.id === target.value);
       if (selected === undefined) return;
       this.selectedSampleId = selected.id;
-      this.feedback = { tone: "neutral", message: `${selected.label} selected. Click Load selected to put it into Build mode.` };
+      this.feedback = { tone: "neutral", message: `Đã chọn ${selected.label}. Nhấp 'Nạp xe' để đưa vào xưởng lắp ráp.` };
       this.refreshView();
       return;
     }
@@ -78,7 +200,7 @@ export class SandboxApplication {
     this.variants[target.dataset.partId] = target.value;
     this.renderer.setBlueprint(this.blueprint, this.composition.catalog, this.variants);
     this.renderer.setSelection(this.selectedPartId);
-    this.feedback = { tone: "good", message: `Visual ${target.value} selected for QA. Blueprint and physics metadata are unchanged.` };
+    this.feedback = { tone: "good", message: `Đã chọn kiểu hiển thị ${target.value}.` };
     this.refreshView();
   };
 
@@ -102,6 +224,7 @@ export class SandboxApplication {
     if (this.state !== "Building") return;
     this.selectedPartId = partId;
     this.renderer.setSelection(partId);
+    soundEffects.playClick();
     this.refreshView();
   };
 
@@ -120,7 +243,50 @@ export class SandboxApplication {
       }
       const delta = this.lastFrameTime === 0 ? 0 : (time - this.lastFrameTime) / 1000;
       this.lastFrameTime = time;
-      if (this.session !== undefined) this.session.advance(delta);
+
+      if (this.session !== undefined) {
+        this.session.advance(delta);
+
+        // Check victory or failure
+        if (this.state === "Running") {
+          const rootId = this.blueprint.parts[0]?.id;
+          const rootTransform = rootId === undefined ? undefined : this.renderer.getLastFrame()?.transforms[String(rootId)];
+          const evaluation = this.evaluator.step(delta, rootTransform?.position);
+
+          if (evaluation.status === "completed") {
+            soundEffects.playVictory();
+            const current = this.getCurrentChallenge();
+            const existingStars = this.challengeProgress[current.id]?.stars ?? 0;
+            this.challengeProgress[current.id] = {
+              completed: true,
+              stars: Math.max(existingStars, evaluation.stars),
+              bestTimeSeconds: Math.min(this.challengeProgress[current.id]?.bestTimeSeconds ?? 999, evaluation.elapsedSeconds),
+            };
+            this.saveProgress();
+            this.victoryState = {
+              stars: evaluation.stars,
+              timeSeconds: evaluation.elapsedSeconds,
+              message: evaluation.message ?? "Bạn đã vượt qua thử thách thành công!",
+            };
+            void this.stopAndReset();
+            return;
+          } else if (evaluation.status === "failed") {
+            soundEffects.playBoing();
+            this.failState = {
+              message: evaluation.message ?? "Xe đã bị rơi khỏi đường đua!",
+              stemTip: this.getCurrentChallenge().stemTip,
+            };
+            void this.stopAndReset();
+            return;
+          }
+
+          // Sound update
+          soundEffects.updateMotor(this.session.getLastControls().throttle);
+        }
+      } else {
+        soundEffects.stopMotor();
+      }
+
       if (this.logDirty && time - this.lastLogRefresh >= 150) {
         this.logDirty = false;
         this.lastLogRefresh = time;
@@ -141,16 +307,27 @@ export class SandboxApplication {
         this.rendererReady = true;
         this.composition.emit("renderer.webgl.context-restored", {}, "info");
         if (this.state === "Failed") {
-          this.feedback = { tone: "neutral", message: "WebGL context restored. Use Retry to rebuild the simulation, or Reset to edit." };
+          this.feedback = { tone: "neutral", message: "Đồ họa WebGL đã phục hồi. Bấm Thử Lại để tiếp tục." };
           this.refreshView();
         }
       },
     });
     this.renderer.mount(this.view.getElement("viewport"));
-    this.renderer.setEnvironment(defaultSimulationEnvironment());
+
+    // Load progress
+    this.loadProgress();
+
+    // Set initial environment
+    const initialChallenge = this.getCurrentChallenge();
+    this.renderer.setEnvironment(initialChallenge.environment);
+    this.evaluator = new RealtimeChallengeEvaluator(initialChallenge);
+
     this.host.addEventListener("click", this.onClick);
     this.host.addEventListener("change", this.onChange);
     this.host.addEventListener("input", this.onInput);
+    this.host.addEventListener("pointerdown", this.onPointerDownDrive);
+    this.host.addEventListener("pointerup", this.onPointerUpDrive);
+    this.host.addEventListener("pointercancel", this.onPointerUpDrive);
     this.host.addEventListener("sandbox:test-fault", this.onTestFault);
     window.addEventListener("keydown", this.onKeyDown);
     this.unsubscribeLog = this.composition.memoryLog.subscribe(() => { this.logDirty = true; });
@@ -160,16 +337,31 @@ export class SandboxApplication {
   private logDirty = false;
   private lastLogRefresh = 0;
 
+  private loadProgress(): void {
+    try {
+      const raw = localStorage.getItem("stem_car_lab_progress");
+      if (raw) {
+        this.challengeProgress = JSON.parse(raw) as Record<string, ChallengeProgress>;
+      }
+    } catch { /* ignore storage errors */ }
+  }
+
+  private saveProgress(): void {
+    try {
+      localStorage.setItem("stem_car_lab_progress", JSON.stringify(this.challengeProgress));
+    } catch { /* ignore storage errors */ }
+  }
+
   public async initialize(): Promise<void> {
     try {
       const created = await this.composition.building.create("sandbox-machine");
       if (!created.ok) throw new Error(created.error.code);
       await this.syncBlueprint();
       this.state = "Building";
-      this.feedback = { tone: "good", message: "Build mode ready. Place a structural block to begin." };
+      this.feedback = { tone: "good", message: "Xưởng chế tạo sẵn sàng! Hãy chọn Khung xe để đặt xuống sàn." };
       this.refreshView();
     } catch (error) {
-      this.feedback = { tone: "bad", message: `Sandbox boot failed: ${error instanceof Error ? error.message : String(error)}` };
+      this.feedback = { tone: "bad", message: `Khởi động thất bại: ${error instanceof Error ? error.message : String(error)}` };
       this.refreshView();
     }
   }
@@ -179,10 +371,14 @@ export class SandboxApplication {
     this.disposed = true;
     if (this.rafId !== undefined) cancelAnimationFrame(this.rafId);
     this.rafId = undefined;
+    soundEffects.stopMotor();
     window.removeEventListener("keydown", this.onKeyDown);
     this.host.removeEventListener("click", this.onClick);
     this.host.removeEventListener("change", this.onChange);
     this.host.removeEventListener("input", this.onInput);
+    this.host.removeEventListener("pointerdown", this.onPointerDownDrive);
+    this.host.removeEventListener("pointerup", this.onPointerUpDrive);
+    this.host.removeEventListener("pointercancel", this.onPointerUpDrive);
     this.host.removeEventListener("sandbox:test-fault", this.onTestFault);
     this.unsubscribeLog();
     try { await this.cleanupSimulation(); } catch { /* Best-effort shutdown. */ }
@@ -190,6 +386,20 @@ export class SandboxApplication {
   }
 
   public getBlueprint(): MachineBlueprint { return this.blueprint; }
+
+  public async selectChallenge(challengeId: string): Promise<void> {
+    if (this.state === "Running") await this.stopAndReset();
+    this.currentChallengeId = challengeId;
+    this.showChallengeModal = false;
+    const challenge = this.getCurrentChallenge();
+    this.evaluator = new RealtimeChallengeEvaluator(challenge);
+    this.renderer.setEnvironment(challenge.environment);
+    this.renderer.setBlueprint(this.blueprint, this.composition.catalog, this.variants);
+    this.renderer.resetCamera();
+    this.feedback = { tone: "good", message: `Đã nạp ${challenge.title}: ${challenge.subtitle}` };
+    soundEffects.playClick();
+    this.refreshView();
+  }
 
   private async syncBlueprint(): Promise<void> {
     const loaded = await this.composition.building.load("sandbox-machine");
@@ -204,32 +414,58 @@ export class SandboxApplication {
     this.refreshView();
   }
 
+  private generateUniquePartId(definitionId: string): string {
+    const rawPrefix = definitionId.replace(/^core\./, "");
+    const prefixMap: Record<string, string> = {
+      "powered-wheel": "wheel",
+      "drive-gear": "gear",
+      "motor-module": "motor",
+      "crawler-track": "track",
+      "battery-box": "battery",
+      "heavy-beam": "beam",
+      "steering-hinge": "hinge",
+      "structural-block": "chassis",
+    };
+    const prefix = prefixMap[rawPrefix] ?? rawPrefix.split("-")[0] ?? "part";
+    const existingPartIds = new Set(this.blueprint.parts.map((part) => String(part.id)));
+    const existingConnectionIds = new Set(this.blueprint.connections.map((c) => String(c.id)));
+    const existingBindingIds = new Set(this.blueprint.controlBindings.map((b) => String(b.id)));
+    let counter = 1;
+    while (
+      existingPartIds.has(`${prefix}-${String(counter)}`) ||
+      existingConnectionIds.has(`${prefix}-${String(counter)}`) ||
+      existingBindingIds.has(`${prefix}-${String(counter)}-drive`) ||
+      existingBindingIds.has(`${prefix}-${String(counter)}-steer`)
+    ) {
+      counter++;
+    }
+    return `${prefix}-${String(counter)}`;
+  }
+
   private async beginPlacement(definitionId: string | undefined): Promise<void> {
     if (this.state !== "Building" || definitionId === undefined) return;
     if (this.blueprint.parts.length === 0) {
-      const prefix = definitionId === "core.structural-block" ? "block" : definitionId === "core.powered-wheel" ? "wheel" : "hinge";
-      const partId = `${prefix}-1`;
+      const partId = this.generateUniquePartId(definitionId);
       const added = await this.composition.building.addPart("sandbox-machine", { id: partId, definitionId, transform: rootTransform() });
       if (!added.ok) { this.reject(added.error.code); return; }
       this.selectedPartId = partId;
       await this.syncBlueprint();
       this.renderer.setSelection(this.selectedPartId);
-      this.feedback = { tone: "good", message: `${partId} placed as the root. Start now to test it, or add any compatible part from the palette.` };
+      soundEffects.playSnap();
+      this.feedback = { tone: "good", message: `Đã đặt ${partId} làm bệ đỡ trung tâm. Tiếp tục gắn thêm bánh xe hoặc khớp bẻ lái!` };
       this.refreshView();
       return;
     }
     const candidates = findPlacementCandidates(this.blueprint, definitionId, this.composition.catalog);
     if (candidates.length === 0) {
-      this.feedback = { tone: "bad", message: "No free compatible socket is available for that part." };
+      this.feedback = { tone: "bad", message: "Không còn điểm nối tương thích nào còn trống cho linh kiện này." };
       this.refreshView();
       return;
     }
-    const prefix = definitionId === "core.structural-block" ? "block" : definitionId === "core.powered-wheel" ? "wheel" : "hinge";
-    const partId = `${prefix}-${String(this.blueprint.parts.filter((part) => String(part.id).startsWith(prefix)).length + 1)}`;
+    const partId = this.generateUniquePartId(definitionId);
     this.placement = { definitionId, partId, candidates, candidateIndex: 0, rotationSteps: 0 };
     this.paintPlacement();
-    const role = definitionId === "core.steering-hinge" ? "hinge.mount → chassis front mount" : definitionId === "core.powered-wheel" ? "wheel.axle → highlighted hinge axle or chassis mount" : "frame socket → highlighted compatible mount";
-    this.feedback = { tone: "neutral", message: `Ghost ready: ${role}. Confirm connection when the target socket is highlighted.` };
+    this.feedback = { tone: "neutral", message: `Khối ảo màu xanh đã sẵn sàng. Hãy bấm 'Xác nhận gắn' khi điểm gắn sáng lên.` };
     this.refreshView();
   }
 
@@ -262,16 +498,20 @@ export class SandboxApplication {
     this.placement = undefined;
     this.renderer.setGhost(undefined);
     this.renderer.setSocketHighlights([]);
-    this.feedback = { tone: "neutral", message: "Placement cancelled; blueprint is unchanged." };
+    this.feedback = { tone: "neutral", message: "Đã hủy thao tác gắn; xe không thay đổi." };
     this.refreshView();
   }
 
   private async confirmPlacement(): Promise<void> {
-    if (this.placement === undefined || this.state !== "Building") return;
-    const candidate = this.placement.candidates[this.placement.candidateIndex];
+    const placement = this.placement;
+    if (placement === undefined || this.state !== "Building") return;
+    const candidate = placement.candidates[placement.candidateIndex];
     if (candidate === undefined) return;
-    const rotated = rotatePlacementCandidate(this.blueprint, this.placement.definitionId, candidate, this.composition.catalog, this.placement.rotationSteps);
-    const preview = createPlacementPreview(this.blueprint, this.placement.definitionId, this.placement.partId, rotated, this.composition.catalog);
+    const finalPartId = this.blueprint.parts.some((p) => String(p.id) === placement.partId)
+      ? this.generateUniquePartId(placement.definitionId)
+      : placement.partId;
+    const rotated = rotatePlacementCandidate(this.blueprint, placement.definitionId, candidate, this.composition.catalog, placement.rotationSteps);
+    const preview = createPlacementPreview(this.blueprint, placement.definitionId, finalPartId, rotated, this.composition.catalog);
     const placed = await this.composition.building.placeAndConnect("sandbox-machine", preview.placement);
     if (!placed.ok) { this.reject(placed.error.code); return; }
     this.placement = undefined;
@@ -279,8 +519,8 @@ export class SandboxApplication {
     await this.syncBlueprint();
     this.selectedPartId = preview.placement.part.id;
     this.renderer.setSelection(this.selectedPartId);
-    const nextMessage = this.placementDescription(preview.placement.part.definitionId, true);
-    this.feedback = { tone: "good", message: `${preview.placement.part.id} connected atomically. ${nextMessage}` };
+    soundEffects.playSnap();
+    this.feedback = { tone: "good", message: `Đã gắn thành công ${preview.placement.part.id}!` };
     this.refreshView();
   }
 
@@ -288,28 +528,38 @@ export class SandboxApplication {
     if (this.state !== "Building") return;
     if (!this.rendererReady) { this.reject("renderer.webgl-context-unavailable"); return; }
     this.state = "Compiling";
-    this.feedback = { tone: "neutral", message: "Locking blueprint and compiling Rapier bodies, joints and actuators…" };
+    this.feedback = { tone: "neutral", message: "Đang khởi động cỗ máy và nạp mô phỏng vật lý Rapier…" };
     this.refreshView();
     let orphanedWorld: { dispose(): void } | undefined;
     try {
+      await this.pruneDisconnectedParts();
       const snapshot = await this.composition.building.acquireSimulationSnapshot("sandbox-machine");
       if (!snapshot.ok) throw new Error(snapshot.error.code);
       this.simulationLockHeld = true;
-      const compiled = this.composition.simulationCompiler.compile(snapshot.value, defaultSimulationEnvironment());
-      if (!compiled.ok) throw new Error(compiled.error.code);
+      const currentEnv = this.getCurrentChallenge().environment;
+      const compiled = this.composition.simulationCompiler.compile(snapshot.value, currentEnv);
+      if (!compiled.ok) {
+        if (compiled.error.code === "simulation.compile.disconnected-machine") {
+          throw new Error("Xe bị đứt đoạn! Các khối cần được gắn liền mạch với nhau.");
+        }
+        throw new Error(compiled.error.code);
+      }
       orphanedWorld = compiled.value.world;
+      this.renderer.resetCamera();
       this.session = this.composition.createSimulationSession(compiled.value.world, this.renderer);
       orphanedWorld = undefined;
       this.host.dataset.physicsSpecificationJson = serializePhysicsSpecification(compiled.value.specification);
       this.session.start();
+      this.evaluator.reset();
+      this.evaluator.start();
       this.updatePhysicsDiagnostics();
       this.state = "Running";
       const hasDrive = compiled.value.specification.actuators.some((actuator) => actuator.action === "drive");
       const hasSteer = compiled.value.specification.actuators.some((actuator) => actuator.action === "steer");
       const driveActuators = compiled.value.specification.actuators.filter((actuator) => actuator.action === "drive").length;
       const steeringActuators = compiled.value.specification.actuators.filter((actuator) => actuator.action === "steer").length;
-      const controlMessage = `${hasDrive ? "W/S or ↑/↓ drive" : "No drive actuator yet"} · ${hasSteer ? "A/D or ←/→ steer" : "No steering actuator yet"}`;
-      this.feedback = { tone: "good", message: `Running. ${controlMessage}. Add parts after Reset; this machine is allowed to be incomplete.` };
+      const controlMessage = `${hasDrive ? "Tiến/Lùi bằng W/S hoặc phím Mũi Tên" : "Chưa có bánh dẫn động"} · ${hasSteer ? "Rẽ Trái/Phải bằng A/D" : "Chưa có khớp bẻ lái"}`;
+      this.feedback = { tone: "good", message: `Đang lái! ${controlMessage}. Hãy đưa xe về vạch đích vàng!` };
       this.composition.emit("simulation.started", { blueprintVersion: snapshot.value.version, bodies: compiled.value.specification.bodies.length, joints: compiled.value.specification.joints.length, actuators: compiled.value.specification.actuators.length, driveActuators, steeringActuators });
       this.refreshView();
     } catch (error) {
@@ -323,7 +573,7 @@ export class SandboxApplication {
       await this.cleanupSimulation();
       await this.syncBlueprint();
       this.state = "Building";
-      this.feedback = { tone: "good", message: "Reset to the immutable build blueprint. You can edit again." };
+      this.feedback = { tone: "good", message: "Đã đưa xe về xưởng chế tạo tại vạch xuất phát. Bạn có thể chỉnh sửa tiếp." };
       this.composition.emit("simulation.reset", { blueprintVersion: this.blueprint.version });
       this.refreshView();
     } catch (error) {
@@ -332,20 +582,17 @@ export class SandboxApplication {
   }
 
   private async retry(): Promise<void> {
-    if (this.state !== "Failed") return;
-    if (!this.rendererReady) {
-      this.feedback = { tone: "bad", message: "WebGL context is still unavailable. Retry becomes available after the browser restores it." };
-      this.refreshView();
-      return;
-    }
+    this.victoryState = undefined;
+    this.failState = undefined;
     await this.stopAndReset();
-    if ((this.state as RuntimeState) === "Building") await this.start();
+    if (this.state === "Building") await this.start();
   }
 
   private async cleanupSimulation(): Promise<void> {
     const errors: unknown[] = [];
     const session = this.session;
     this.session = undefined;
+    soundEffects.stopMotor();
     if (session !== undefined) {
       try { session.stop(); } catch (error) { errors.push(error); }
       try { session.dispose({ disposeRenderer: false }); } catch (error) { errors.push(error); }
@@ -373,7 +620,7 @@ export class SandboxApplication {
       }
       this.lastFrameTime = 0;
       this.state = "Failed";
-      this.feedback = { tone: "bad", message: `Runtime failed during ${phase}: ${reason}. Retry rebuilds from the saved blueprint; Reset returns to Build mode.` };
+      this.feedback = { tone: "bad", message: `Có sự cố vật lý (${phase}): ${reason}. Bấm Làm Lại để sửa xe.` };
       this.composition.emit("simulation.runtime.failed", { phase, reason }, "error");
       this.refreshView();
     } finally {
@@ -391,34 +638,59 @@ export class SandboxApplication {
       await this.syncBlueprint();
       this.selectedPartId = "chassis";
       this.renderer.setSelection(this.selectedPartId);
-    const sampleDefinition = RUNTIME_SAMPLES.find((candidate) => candidate.id === this.selectedSampleId);
-    const wheelCount = this.blueprint.parts.filter((part) => part.definitionId === "core.powered-wheel").length;
-    const hingeCount = this.blueprint.parts.filter((part) => part.definitionId === "core.steering-hinge").length;
-    this.feedback = { tone: "good", message: `${sampleDefinition?.label ?? "Runtime sample"} loaded: ${String(this.blueprint.parts.length)} parts · ${String(wheelCount)} wheels · ${String(hingeCount)} steering hinges · ${String(this.blueprint.connections.length)} joints. Palette assembly remains available.` };
+      const sampleDefinition = RUNTIME_SAMPLES.find((c) => c.id === this.selectedSampleId);
+      this.feedback = { tone: "good", message: `Đã nạp xe mẫu: ${sampleDefinition?.label ?? "Xe mẫu"} với ${String(this.blueprint.parts.length)} bộ phận. Bấm '🎮 Lái Thử' để trải nghiệm!` };
       this.refreshView();
     } catch (error) {
       this.reject(error instanceof Error ? error.message : String(error));
     }
   }
 
+  private async pruneDisconnectedParts(): Promise<void> {
+    await this.syncBlueprint();
+    if (this.blueprint.parts.length <= 1) return;
+    const root = this.blueprint.parts[0];
+    if (root === undefined) return;
+    const visited = new Set<string>([String(root.id)]);
+    const queue = [String(root.id)];
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (current === undefined) continue;
+      for (const c of this.blueprint.connections) {
+        const next = String(c.a.partId) === current ? String(c.b.partId) : String(c.b.partId) === current ? String(c.a.partId) : undefined;
+        if (next !== undefined && !visited.has(next)) {
+          visited.add(next);
+          queue.push(next);
+        }
+      }
+    }
+    for (const part of this.blueprint.parts) {
+      if (!visited.has(String(part.id))) {
+        await this.composition.building.removePart("sandbox-machine", String(part.id));
+      }
+    }
+    await this.syncBlueprint();
+  }
+
   private async deleteSelected(): Promise<void> {
     if (this.state !== "Building" || this.selectedPartId === undefined) return;
-    if (this.selectedPartId === "chassis" && this.blueprint.parts.length > 1) { this.reject("Cannot delete the root while other parts are attached."); return; }
-    const result = await this.composition.building.removePart("sandbox-machine", this.selectedPartId);
-    if (!result.ok) { this.reject(result.error.code); return; }
+    const toDelete = this.selectedPartId;
     this.selectedPartId = undefined;
-    await this.syncBlueprint();
-    this.feedback = { tone: "good", message: "Part removed with its connections and bindings." };
+    const result = await this.composition.building.removePart("sandbox-machine", toDelete);
+    if (!result.ok) { this.reject(result.error.code); return; }
+    await this.pruneDisconnectedParts();
+    soundEffects.playSnap();
+    this.feedback = { tone: "good", message: "Đã tháo module thành công khỏi xe." };
     this.refreshView();
   }
 
   private async rotateSelected(): Promise<void> {
     if (this.state !== "Building" || this.selectedPartId === undefined) return;
-    if (this.blueprint.connections.some((connection) => String(connection.a.partId) === this.selectedPartId || String(connection.b.partId) === this.selectedPartId)) { this.reject("Disconnect the part before rotating it so joint anchors stay exact."); return; }
+    if (this.blueprint.connections.some((c) => String(c.a.partId) === this.selectedPartId || String(c.b.partId) === this.selectedPartId)) { this.reject("Hãy tháo kết nối trước khi xoay khối."); return; }
     const result = await this.composition.building.rotatePart("sandbox-machine", this.selectedPartId, "y");
     if (!result.ok) { this.reject(result.error.code); return; }
     await this.syncBlueprint();
-    this.feedback = { tone: "good", message: "Part rotated 90°." };
+    this.feedback = { tone: "good", message: "Đã xoay khối 90°." };
     this.refreshView();
   }
 
@@ -426,8 +698,9 @@ export class SandboxApplication {
     if (this.state !== "Building" || connectionId === undefined) return;
     const result = await this.composition.building.disconnectParts("sandbox-machine", connectionId);
     if (!result.ok) { this.reject(result.error.code); return; }
-    await this.syncBlueprint();
-    this.feedback = { tone: "good", message: `Disconnected ${connectionId}.` };
+    await this.pruneDisconnectedParts();
+    soundEffects.playSnap();
+    this.feedback = { tone: "good", message: "Đã tháo rời khớp nối và giải phóng module." };
     this.refreshView();
   }
 
@@ -436,13 +709,21 @@ export class SandboxApplication {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = "sandbox-events.json";
+    anchor.download = "stem-car-events.json";
     anchor.click();
     URL.revokeObjectURL(url);
   }
 
   private reject(message: string): void {
-    this.feedback = { tone: "bad", message: `Rejected: ${message}` };
+    const friendlyMessages: Record<string, string> = {
+      "building.part.duplicate-id": "Trùng ID linh kiện trên xe. Vui lòng bấm gắn lại để tự động lấy ID mới!",
+      "building.connection.occupied": "Khớp nối này đã có linh kiện khác gắn vào.",
+      "building.connection.incompatible": "Khớp nối không tương thích.",
+      "building.connection.invalid": "Khớp nối không hợp lệ.",
+      "simulation.compile.disconnected-machine": "Xe bị đứt đoạn! Các khối cần được gắn liền mạch với nhau.",
+    };
+    const displayMsg = friendlyMessages[message] ?? `Lỗi: ${message}`;
+    this.feedback = { tone: "bad", message: displayMsg };
     this.composition.emit("building.command.rejected.ui", { message }, "warn");
     this.refreshView();
   }
@@ -463,7 +744,31 @@ export class SandboxApplication {
     if (this.disposed) return;
     const events = this.composition.memoryLog.snapshot();
     const currentCandidate = this.placement?.candidates[this.placement.candidateIndex];
-    this.view.render({ state: this.state, rendererReady: this.rendererReady, blueprint: this.blueprint, ...(this.selectedPartId === undefined ? {} : { selectedPartId: this.selectedPartId }), ...(this.feedback === undefined ? {} : { feedback: this.feedback }), ...(this.placement === undefined ? {} : { placement: { definitionId: this.placement.definitionId, candidateIndex: this.placement.candidateIndex, candidateCount: this.placement.candidates.length, valid: true } }), ...(currentCandidate === undefined ? {} : { placementTarget: { targetPartId: currentCandidate.targetPartId, targetSocketId: currentCandidate.targetSocketId, sourceSocketId: currentCandidate.sourceSocketId } }), assemblyGuide: this.getAssemblyGuide(), samples: RUNTIME_SAMPLES, selectedSampleId: this.selectedSampleId, visualVariants: this.variants, events, eventFilter: this.eventFilter });
+    this.view.render({
+      state: this.state,
+      rendererReady: this.rendererReady,
+      blueprint: this.blueprint,
+      ...(this.selectedPartId === undefined ? {} : { selectedPartId: this.selectedPartId }),
+      ...(this.feedback === undefined ? {} : { feedback: this.feedback }),
+      ...(this.placement === undefined ? {} : { placement: { definitionId: this.placement.definitionId, candidateIndex: this.placement.candidateIndex, candidateCount: this.placement.candidates.length, valid: true } }),
+      ...(currentCandidate === undefined ? {} : { placementTarget: { targetPartId: currentCandidate.targetPartId, targetSocketId: currentCandidate.targetSocketId, sourceSocketId: currentCandidate.sourceSocketId } }),
+      assemblyGuide: this.getAssemblyGuide(),
+      samples: RUNTIME_SAMPLES,
+      selectedSampleId: this.selectedSampleId,
+      visualVariants: this.variants,
+      events,
+      eventFilter: this.eventFilter,
+      challenges: this.challenges,
+      currentChallengeId: this.currentChallengeId,
+      challengeProgress: this.challengeProgress,
+      gameMode: this.gameMode,
+      victoryState: this.victoryState,
+      failState: this.failState,
+      soundMuted: soundEffects.isMuted(),
+      showWelcomeModal: this.showWelcomeModal,
+      showChallengeModal: this.showChallengeModal,
+      showAdvancedPanel: this.showAdvancedPanel,
+    });
     this.host.dataset.blueprintJson = JSON.stringify(this.blueprint);
     this.host.dataset.activeRafOwners = this.rafId === undefined ? "0" : "1";
     this.host.dataset.activePhysicsWorlds = String(RapierPhysicsWorld.getActiveWorldCount());
@@ -476,31 +781,40 @@ export class SandboxApplication {
 
   private getAssemblyGuide(): readonly string[] {
     const hinges = this.blueprint.parts.filter((part) => part.definitionId === "core.steering-hinge").length;
-    const wheels = this.blueprint.parts.filter((part) => part.definitionId === "core.powered-wheel").length;
+    const wheels = this.blueprint.parts.filter((part) => part.definitionId === "core.powered-wheel" || part.definitionId === "core.crawler-track" || part.definitionId === "core.drive-gear").length;
     const current = this.placement?.candidates[this.placement.candidateIndex];
-    const rootId = String(this.blueprint.parts[0]?.id ?? "block-1");
-    const rootDefinitionId = this.blueprint.parts[0]?.definitionId;
     if (current !== undefined) {
-      const source = current.sourceSocketId;
-      const target = `${current.targetPartId}:${current.targetSocketId}`;
-      return this.placement?.definitionId === "core.steering-hinge"
-        ? [`Confirm hinge.${source} → ${target}. This creates the steering joint.`, "Repeat for the other front mount; use socket → if you want the next candidate.", "Then add a Powered wheel and confirm wheel.axle → hinge.axle."]
-        : this.placement?.definitionId === "core.powered-wheel"
-          ? [`Confirm wheel.${source} → ${target}. For steering, target must end in :axle on a hinge.`, "The highlighted socket is the exact physics joint anchor; no free-floating part is created.", "Use W/S to drive after four wheels and two hinges are connected."]
-          : [`Confirm ${source} → ${target} to extend the chassis.`, "Green ghost means the socket pair is compatible.", "Use the same palette flow to add wheels to the new frame block."];
+      return [
+        `Đang lắp: ${this.placement?.definitionId ?? ""}`,
+        `Điểm kết nối: Gắn vào ${current.targetPartId}:${current.targetSocketId}`,
+        "Bấm 'Xác nhận gắn' màu xanh hoặc nhấn phím R để xoay.",
+      ];
     }
-    if (this.blueprint.parts.length === 0) return ["Place any palette part to begin; a Structural block is the usual chassis root.", "You can press Start with only that part to test an incomplete machine.", "Add compatible parts whenever you want; the target socket will be highlighted."];
-    if (rootDefinitionId !== "core.structural-block") return [`${rootId} is the root experiment; there is no required chassis shape.`, "Choose any compatible part and confirm the highlighted socket.", "Start is allowed now; add or remove parts after Reset to explore the result."];
-    if (hinges === 0) return ["Click Steering hinge in the palette.", `Confirm hinge.mount → ${rootId}:mount-front-left; the target socket will glow.`, "Start is allowed at any stage; add a second hinge and wheels whenever you want."];
-    if (hinges === 1) return ["Click Steering hinge again.", `The next candidate is ${rootId}:mount-front-right; confirm the highlighted target.`, "The hinge's axle is where its Powered wheel must attach."];
-    if (wheels < 2) return ["Click Powered wheel in the palette.", "Confirm wheel.axle → hinge-1:axle or hinge-2:axle.", "The wheel must attach to the hinge axle to steer with it."];
-    if (wheels < 4) return ["Add Powered wheels to the two free rear chassis mounts.", "Use socket → to cycle candidates; the label tells you the exact target.", "When the chassis has four wheels, click Start and drive with W/S + A/D."];
-    return ["The machine has steering hinges and four or more powered wheels.", "Click Start, then use W/S or ↑/↓ to drive and A/D or ←/→ to steer.", "Use Stop/Reset to return to this blueprint and continue editing."];
-  }
-
-  private placementDescription(definitionId: string, connected: boolean): string {
-    if (definitionId === "core.steering-hinge") return connected ? "Next: add the second hinge, then attach wheels to both hinge.axle sockets." : "";
-    if (definitionId === "core.powered-wheel") return connected ? "Keep adding wheels; a steering wheel must be on a hinge axle." : "";
-    return connected ? "Continue adding parts from the palette." : "";
+    if (this.blueprint.parts.length === 0) {
+      return [
+        "Bước 1: Chọn Khung Cơ Bản hoặc Dầm Khung Dài đặt xuống sàn làm bệ đỡ.",
+        "Bước 2: Gắn Khớp Bẻ Lái hoặc Bánh Xe / Băng Xích vào các khớp nối.",
+        "Bước 3: Nhấn nút Lái Thử để điều khiển xe vượt qua thử thách!",
+      ];
+    }
+    if (hinges === 0 && wheels < 2) {
+      return [
+        "Mẹo: Bạn có thể gắn Khớp Bẻ Lái ở phía trước để xe có thể rẽ trái/phải.",
+        "Sau đó gắn Bánh Động Cơ hoặc Băng Xích vào trục khớp bẻ lái.",
+        "Hoặc gắn trực tiếp bánh xe vào khung để làm xe chạy thẳng!",
+      ];
+    }
+    if (wheels < 4) {
+      return [
+        `Xe hiện có ${String(wheels)} bánh. Hãy gắn thêm bánh hoặc xích cho đủ các góc xe.`,
+        "Dùng nút 'Đổi điểm gắn →' nếu muốn thử các vị trí lắp khác nhau.",
+        "Sau khi xe cân đối, bấm '🎮 Lái Thử' để đua nào!",
+      ];
+    }
+    return [
+      "Chiếc xe đã có đầy đủ hệ thống dẫn động và bẻ lái!",
+      "Nhấn '🎮 Lái Thử', dùng phím Mũi Tên (hoặc phím W/A/S/D) để lái.",
+      "Bạn cũng có thể click vào các nút mũi tên ảo trên màn hình để lái xe!",
+    ];
   }
 }

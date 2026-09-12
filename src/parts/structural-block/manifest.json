@@ -12,7 +12,9 @@
       { "id": "frame-front", "accepts": ["mount"], "tags": ["mount"], "position": [0, 0, 1.25], "rotation": [0, 0, 0] },
       { "id": "frame-rear", "accepts": ["mount"], "tags": ["mount"], "position": [0, 0, -1.25], "rotation": [0, 0, 0] },
       { "id": "frame-left", "accepts": ["mount"], "tags": ["mount"], "position": [-1, 0, 0], "rotation": [0, 0, 0] },
-      { "id": "frame-right", "accepts": ["mount"], "tags": ["mount"], "position": [1, 0, 0], "rotation": [0, 0, 0] }
+      { "id": "frame-right", "accepts": ["mount"], "tags": ["mount"], "position": [1, 0, 0], "rotation": [0, 0, 0] },
+      { "id": "frame-top", "accepts": ["mount"], "tags": ["mount"], "position": [0, 0.25, 0], "rotation": [0, 0, 0] },
+      { "id": "frame-bottom", "accepts": ["mount"], "tags": ["mount"], "position": [0, -0.25, 0], "rotation": [0, 0, 0] }
     ],
     "capabilities": []
   },

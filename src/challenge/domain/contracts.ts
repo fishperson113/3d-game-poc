@@ -21,8 +21,32 @@ export type LandscapeDocument = ContentDocument<"core.landscape", {
   readonly triggers: readonly unknown[];
 }>;
 
+import type { SimulationEnvironment } from "../../simulation/ports/physics-world";
+
 export interface LoadedLevel {
   readonly id: string;
   readonly title: string;
   readonly landscape: LandscapeDocument;
 }
+
+export interface ChallengeDefinition {
+  readonly id: string;
+  readonly number: number;
+  readonly title: string;
+  readonly subtitle: string;
+  readonly description: string;
+  readonly stemTip: string;
+  readonly icon: string;
+  readonly environment: SimulationEnvironment;
+  readonly targetTimeSeconds: number;
+  readonly failThresholdY?: number;
+  readonly recommendedSampleId?: string;
+  readonly unlockReward?: string;
+}
+
+export interface ChallengeProgress {
+  readonly stars: number;
+  readonly bestTimeSeconds?: number;
+  readonly completed: boolean;
+}
+

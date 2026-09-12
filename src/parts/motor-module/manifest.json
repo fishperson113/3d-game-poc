@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "kind": "core.part",
+  "id": "core.motor-module",
+  "revision": 1,
+  "assembly": {
+    "sockets": [
+      { "id": "mount", "accepts": ["mount"], "tags": ["mount"], "position": [-0.3, 0, 0], "rotation": [0, 0, 0] },
+      { "id": "axle", "accepts": ["axle"], "tags": ["axle"], "position": [0.3, 0, 0], "rotation": [0, 0, 0] }
+    ],
+    "capabilities": ["core.motor-wheel"],
+    "configurationSchema": { "fields": { "motorTorque": { "type": "number", "default": 75, "min": 0, "max": 150 } } }
+  },
+  "physics": {
+    "body": { "mass": 2.0, "linearDamping": 0.2, "angularDamping": 0.3 },
+    "colliders": [
+      { "shape": "cylinder", "halfHeight": 0.25, "radius": 0.28, "position": [0, 0, 0], "rotation": [0, 0, 1.5707963267948966], "friction": 1.2, "restitution": 0 }
+    ],
+    "actuator": { "kind": "wheel", "socketId": "axle", "axis": [1, 0, 0], "maxForce": 75, "targetSpeed": 9 }
+  },
+  "visual": {
+    "factory": "motor-module",
+    "revision": 1,
+    "source": "procedural-brief",
+    "sourceCommit": "6e60b5e22419464b4853e01ddb6c0e6f6659a733",
+    "normalization": { "metersPerUnit": 1, "upAxis": "y", "forwardAxis": "z", "origin": "part-frame" },
+    "variants": [
+      { "id": "A", "label": "Motor thể thao (Sport Motor)", "factory": "motor-module" },
+      { "id": "B", "label": "Motor trợ lực (Turbo Motor)", "factory": "motor-module" }
+    ]
+  },
+  "provenance": { "brief": "art-source/parts/motor-module/brief.md", "license": "STEM Lab procedural part", "toolCommit": "6e60b5e22419464b4853e01ddb6c0e6f6659a733" }
+}

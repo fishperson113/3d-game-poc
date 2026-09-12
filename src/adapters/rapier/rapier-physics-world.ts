@@ -122,14 +122,24 @@ export class RapierPhysicsWorld implements PhysicsWorld {
     const approach = (current: number, target: number, rate: number): number => current + Math.max(-rate * timestepSeconds, Math.min(rate * timestepSeconds, target - current));
     this.appliedControls.throttle = approach(this.appliedControls.throttle, this.controls.throttle, 2.5);
     this.appliedControls.steering = approach(this.appliedControls.steering, this.controls.steering, 3);
+    const hasSteeringActuator = Array.from(this.actuators.values()).some((actuator) => actuator.action === "steer");
     for (const actuator of this.actuators.values()) {
       const joint = this.joints.get(actuator.jointId);
       if (joint === undefined) continue;
       const revolute = joint as RAPIER.RevoluteImpulseJoint;
       if (actuator.action === "drive") {
-        revolute.configureMotorVelocity(this.appliedControls.throttle * actuator.targetSpeed * actuator.motorSign, 5);
+        let driveFactor = this.appliedControls.throttle;
+        if (!hasSteeringActuator && this.appliedControls.steering !== 0) {
+          const body2 = joint.body2();
+          const localX = body2.translation().x;
+          // When turning left (+steering): left wheels (+X) slow down/reverse, right wheels (-X) speed up
+          const steerEffect = localX > 0 ? -this.appliedControls.steering : this.appliedControls.steering;
+          driveFactor = this.appliedControls.throttle !== 0 ? this.appliedControls.throttle + steerEffect * 0.5 : steerEffect * 0.75;
+        }
+        const driveDamping = Math.max(25, actuator.maxForce * 0.5);
+        revolute.configureMotorVelocity(driveFactor * actuator.targetSpeed * actuator.motorSign, driveDamping);
         // Releasing throttle coasts; reverse input actively brakes/reverses.
-        revolute.setMotorMaxForce(this.controls.throttle === 0 ? 0 : actuator.maxForce);
+        revolute.setMotorMaxForce(this.controls.throttle === 0 && (!hasSteeringActuator && this.controls.steering === 0) ? 0 : actuator.maxForce);
       } else {
         const target = this.appliedControls.steering * actuator.motorSign * (actuator.limitRadians ?? 0.6);
         revolute.configureMotorPosition(target, actuator.steeringStiffness ?? 80, actuator.steeringDamping ?? 8);
@@ -200,9 +210,30 @@ export class RapierPhysicsWorld implements PhysicsWorld {
     const groundCollider = world.createCollider(RAPIER.ColliderDesc.cuboid(groundSize[0], groundSize[1], groundSize[2]).setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS).setFriction(1.5), ground);
     this.colliderLabels.set(groundCollider.handle, "environment.ground");
     const ramp = specification.environment.ramp;
-    const rampBody = world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(ramp.position[0], ramp.position[1], ramp.position[2]).setRotation(rotation(quaternionFromEuler(ramp.rotation))));
-    const rampCollider = world.createCollider(RAPIER.ColliderDesc.cuboid(ramp.halfExtents[0], ramp.halfExtents[1], ramp.halfExtents[2]).setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS).setFriction(1.3), rampBody);
-    this.colliderLabels.set(rampCollider.handle, "environment.ramp");
+    if (ramp !== undefined) {
+      const rampBody = world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(ramp.position[0], ramp.position[1], ramp.position[2]).setRotation(rotation(quaternionFromEuler(ramp.rotation))));
+      const rampCollider = world.createCollider(RAPIER.ColliderDesc.cuboid(ramp.halfExtents[0], ramp.halfExtents[1], ramp.halfExtents[2]).setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS).setFriction(1.3), rampBody);
+      this.colliderLabels.set(rampCollider.handle, "environment.ramp");
+    }
+    if (specification.environment.obstacles !== undefined) {
+      for (const obs of specification.environment.obstacles) {
+        const bodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(obs.position[0], obs.position[1], obs.position[2]);
+        if (obs.rotation !== undefined) bodyDesc.setRotation(rotation(quaternionFromEuler(obs.rotation)));
+        const body = world.createRigidBody(bodyDesc);
+        let colliderDesc: RAPIER.ColliderDesc;
+        if (obs.shape === "cuboid") {
+          const extents = obs.halfExtents ?? [1, 1, 1];
+          colliderDesc = RAPIER.ColliderDesc.cuboid(extents[0], extents[1], extents[2]);
+        } else {
+          colliderDesc = RAPIER.ColliderDesc.cylinder(obs.halfHeight ?? 1, obs.radius ?? 0.5);
+        }
+        colliderDesc.setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
+        colliderDesc.setFriction(obs.friction ?? 1.5);
+        colliderDesc.setRestitution(obs.restitution ?? 0);
+        const col = world.createCollider(colliderDesc, body);
+        this.colliderLabels.set(col.handle, `environment.${obs.id}`);
+      }
+    }
   }
 
   private createJoint(world: RAPIER.World, spec: PhysicsJointSpec): void {

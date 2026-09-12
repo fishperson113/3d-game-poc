@@ -4,7 +4,7 @@ import { quaternionConjugate, quaternionFromEuler, quaternionMultiply, quaternio
 import type { EventPublisher } from "../../kernel/events/contracts";
 import type { RuntimePartCatalog } from "../../parts/catalog";
 import type { PartPhysicsDefinition } from "../../parts/manifest";
-import type { PhysicsActuatorSpec, PhysicsBodySpec, PhysicsJointSpec, PhysicsSpecification, PhysicsWorld, SimulationEnvironment } from "../ports/physics-world";
+import type { DefaultSimulationEnvironment, PhysicsActuatorSpec, PhysicsBodySpec, PhysicsJointSpec, PhysicsSpecification, PhysicsWorld, SimulationEnvironment } from "../ports/physics-world";
 
 export interface SimulationCompileError {
   readonly code: string;
@@ -144,7 +144,7 @@ function validateOverlaps(blueprint: MachineBlueprint, catalog: RuntimePartCatal
   }
   const environmentBounds: ColliderBounds[] = [
     { partId: "environment.ground", min: [environment.ground.position[0] - environment.ground.halfExtents[0], environment.ground.position[1] - environment.ground.halfExtents[1], environment.ground.position[2] - environment.ground.halfExtents[2]], max: [environment.ground.position[0] + environment.ground.halfExtents[0], environment.ground.position[1] + environment.ground.halfExtents[1], environment.ground.position[2] + environment.ground.halfExtents[2]] },
-    ...colliderBounds({ id: "environment.ramp" as PartInstance["id"], definitionId: "environment", transform: { position: environment.ramp.position, rotation: environment.ramp.rotation } }, { body: { mass: 0, linearDamping: 0, angularDamping: 0 }, colliders: [{ shape: "cuboid", halfExtents: environment.ramp.halfExtents, position: [0, 0, 0], rotation: [0, 0, 0], friction: 0, restitution: 0 }] }, [0, 0, 0]),
+    ...(environment.ramp === undefined ? [] : colliderBounds({ id: "environment.ramp" as PartInstance["id"], definitionId: "environment", transform: { position: environment.ramp.position, rotation: environment.ramp.rotation } }, { body: { mass: 0, linearDamping: 0, angularDamping: 0 }, colliders: [{ shape: "cuboid", halfExtents: environment.ramp.halfExtents, position: [0, 0, 0], rotation: [0, 0, 0], friction: 0, restitution: 0 }] }, [0, 0, 0])),
   ];
   for (const body of bounds) for (const obstacle of environmentBounds) {
     const depth = penetration(body, obstacle);
@@ -168,10 +168,10 @@ function buildActuators(blueprint: MachineBlueprint, catalog: RuntimePartCatalog
     const part = findPart(blueprint, String(binding.partId));
     if (part === undefined) return error("simulation.compile.binding-part-missing", { bindingId: String(binding.id) });
     const physics = findPhysics(catalog, part);
-    if (physics?.actuator === undefined || (binding.action === "drive" && physics.actuator.kind !== "wheel") || (binding.action === "steer" && physics.actuator.kind !== "steering")) return error("simulation.compile.binding-actuator-mismatch", { bindingId: String(binding.id) });
+    if (physics?.actuator === undefined || (binding.action === "drive" && physics.actuator.kind !== "wheel") || (binding.action === "steer" && physics.actuator.kind !== "steering")) continue;
     const joint = actuatorJoint(blueprint, String(part.id), physics.actuator.socketId);
-    if (joint === undefined) return error("simulation.compile.binding-joint-missing", { bindingId: String(binding.id) });
-    if (actuators.some((actuator) => actuator.jointId === joint.id)) return error("simulation.compile.duplicate-actuator", { bindingId: String(binding.id) });
+    if (joint === undefined) continue;
+    if (actuators.some((actuator) => actuator.jointId === joint.id)) continue;
     const root = blueprint.parts[0];
     if (root === undefined) return error("simulation.compile.empty-machine");
     const worldAxis = rotateVector(quaternionFromEuler(part.transform.rotation), physics.actuator.axis);
@@ -193,7 +193,7 @@ function buildActuators(blueprint: MachineBlueprint, catalog: RuntimePartCatalog
   return { ok: true, value: Object.freeze(actuators) };
 }
 
-export function defaultSimulationEnvironment(): SimulationEnvironment {
+export function defaultSimulationEnvironment(): DefaultSimulationEnvironment {
   return { gravity: [0, -9.81, 0], spawn: [0, 0.75, 0], ground: { halfExtents: [14, 0.15, 14], position: [0, -0.15, 0] }, ramp: { halfExtents: [3, 0.22, 1.8], position: [0, 0.28, 5], rotation: [-0.22, 0, 0] } };
 }
 

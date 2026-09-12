@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "kind": "core.part",
+  "id": "core.drive-gear",
+  "revision": 1,
+  "assembly": {
+    "sockets": [
+      { "id": "axle", "accepts": ["mount", "axle"], "tags": ["mount", "axle"], "position": [0, 0, 0], "rotation": [0, 0, 0] }
+    ],
+    "capabilities": ["core.motor-wheel"],
+    "configurationSchema": { "fields": { "motorTorque": { "type": "number", "default": 75, "min": 0, "max": 150 } } }
+  },
+  "physics": {
+    "body": { "mass": 1.2, "linearDamping": 0.15, "angularDamping": 0.25 },
+    "colliders": [
+      { "shape": "cylinder", "halfHeight": 0.14, "radius": 0.48, "position": [0, 0, 0], "rotation": [0, 0, 1.5707963267948966], "friction": 2.5, "restitution": 0.05 }
+    ],
+    "actuator": { "kind": "wheel", "socketId": "axle", "axis": [1, 0, 0], "maxForce": 75, "targetSpeed": 8.5 }
+  },
+  "visual": {
+    "factory": "drive-gear",
+    "revision": 1,
+    "source": "procedural-brief",
+    "sourceCommit": "6e60b5e22419464b4853e01ddb6c0e6f6659a733",
+    "normalization": { "metersPerUnit": 1, "upAxis": "y", "forwardAxis": "z", "origin": "part-frame" },
+    "variants": [
+      { "id": "A", "label": "Bánh răng đồng (Bronze Gear)", "factory": "drive-gear" },
+      { "id": "B", "label": "Bánh răng thép (Steel Gear)", "factory": "drive-gear" }
+    ]
+  },
+  "provenance": { "brief": "art-source/parts/drive-gear/brief.md", "license": "STEM Lab procedural part", "toolCommit": "6e60b5e22419464b4853e01ddb6c0e6f6659a733" }
+}

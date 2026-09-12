@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { MachineBlueprint } from "../../building/domain/contracts";
-import { worldSocketFrame, quaternionFromEuler } from "../../kernel/math";
+import { worldSocketFrame, quaternionFromEuler, type Vector3Tuple } from "../../kernel/math";
 import { PartVisualRegistry } from "../../parts/visual-registry";
 import type { RuntimePartCatalog } from "../../parts/catalog";
 import type { PartVisualInstance } from "./part-visual";
@@ -51,10 +51,11 @@ export class ThreeSimulationRenderer implements SimulationRenderer {
   private ghost: PartVisualInstance | undefined;
   private ghostRoot: THREE.Group | undefined;
   private disposed = false;
-  private theta = 0.65;
-  private phi = 1.0;
-  private radius = 9;
+  private theta = 2.79;
+  private phi = 0.52;
+  private radius = 10;
   private readonly cameraTarget = new THREE.Vector3(0, 1, 0);
+  private currentSpawn: Vector3Tuple = [0, 0.75, 0];
   private lastFrame: SimulationFrame | undefined;
   private followedPartId: string | undefined;
   private readonly followedPosition = new THREE.Vector3();
@@ -141,6 +142,7 @@ export class ThreeSimulationRenderer implements SimulationRenderer {
   }
 
   public setEnvironment(environment: SimulationEnvironment): void {
+    this.currentSpawn = environment.spawn;
     this.disposeObjectChildren(this.environmentRoot);
     const ambient = new THREE.HemisphereLight(0xc8e6e3, 0x111827, 1.8);
     this.environmentRoot.add(ambient);
@@ -151,11 +153,82 @@ export class ThreeSimulationRenderer implements SimulationRenderer {
     ground.position.set(...environment.ground.position);
     ground.userData.semantic = "ground";
     this.environmentRoot.add(ground);
-    const ramp = new THREE.Mesh(new THREE.BoxGeometry(environment.ramp.halfExtents[0] * 2, environment.ramp.halfExtents[1] * 2, environment.ramp.halfExtents[2] * 2), new THREE.MeshStandardMaterial({ color: 0x7b6249, roughness: 0.85 }));
-    ramp.position.set(...environment.ramp.position);
-    ramp.quaternion.set(...quaternionFromEuler(environment.ramp.rotation));
-    ramp.userData.semantic = "ramp";
-    this.environmentRoot.add(ramp);
+    if (environment.ramp !== undefined) {
+      const ramp = new THREE.Mesh(new THREE.BoxGeometry(environment.ramp.halfExtents[0] * 2, environment.ramp.halfExtents[1] * 2, environment.ramp.halfExtents[2] * 2), new THREE.MeshStandardMaterial({ color: 0x7b6249, roughness: 0.85 }));
+      ramp.position.set(...environment.ramp.position);
+      ramp.quaternion.set(...quaternionFromEuler(environment.ramp.rotation));
+      ramp.userData.semantic = "ramp";
+      this.environmentRoot.add(ramp);
+    }
+    if (environment.obstacles !== undefined) {
+      for (const obs of environment.obstacles) {
+        let geom: THREE.BufferGeometry;
+        if (obs.shape === "cuboid") {
+          const extents = obs.halfExtents ?? [1, 1, 1];
+          geom = new THREE.BoxGeometry(extents[0] * 2, extents[1] * 2, extents[2] * 2);
+        } else {
+          geom = new THREE.CylinderGeometry(obs.radius ?? 0.5, obs.radius ?? 0.5, (obs.halfHeight ?? 1) * 2, 16);
+        }
+        const mat = new THREE.MeshStandardMaterial({ color: obs.color ?? 0xd97706, roughness: 0.6, metalness: 0.1 });
+        const meshObj = new THREE.Mesh(geom, mat);
+        meshObj.position.set(...obs.position);
+        if (obs.rotation !== undefined) meshObj.quaternion.set(...quaternionFromEuler(obs.rotation));
+        meshObj.userData.semantic = obs.semantic ?? "obstacle";
+        this.environmentRoot.add(meshObj);
+      }
+    }
+
+    // Start Zone / Starting Line marker at environment.spawn
+    const spawnPos = environment.spawn;
+    const startPad = new THREE.Mesh(
+      new THREE.BoxGeometry(5.0, 0.08, 3.4),
+      new THREE.MeshStandardMaterial({ color: 0x0f766e, emissive: 0x0d9488, emissiveIntensity: 0.45, roughness: 0.4 })
+    );
+    startPad.position.set(spawnPos[0], spawnPos[1] - 0.74, spawnPos[2]);
+    startPad.userData.semantic = "start-pad";
+
+    const startLine = new THREE.Mesh(
+      new THREE.BoxGeometry(4.8, 0.1, 0.4),
+      new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 0.65, roughness: 0.2 })
+    );
+    startLine.position.set(spawnPos[0], spawnPos[1] - 0.72, spawnPos[2] + 1.4);
+
+    const startPoleGeo = new THREE.CylinderGeometry(0.08, 0.08, 3.2);
+    const startPoleMat = new THREE.MeshStandardMaterial({ color: 0x06b6d4, metalness: 0.5 });
+    const leftStartPole = new THREE.Mesh(startPoleGeo, startPoleMat);
+    leftStartPole.position.set(spawnPos[0] - 2.5, spawnPos[1] + 0.85, spawnPos[2]);
+    const rightStartPole = new THREE.Mesh(startPoleGeo, startPoleMat);
+    rightStartPole.position.set(spawnPos[0] + 2.5, spawnPos[1] + 0.85, spawnPos[2]);
+
+    const startBannerGeo = new THREE.BoxGeometry(5.0, 0.55, 0.1);
+    const startBannerMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, emissive: 0x0369a1, emissiveIntensity: 0.45 });
+    const startBanner = new THREE.Mesh(startBannerGeo, startBannerMat);
+    startBanner.position.set(spawnPos[0], spawnPos[1] + 2.3, spawnPos[2]);
+
+    this.environmentRoot.add(startPad, startLine, leftStartPole, rightStartPole, startBanner);
+
+    if (environment.goalZone !== undefined) {
+      const finishPad = new THREE.Mesh(
+        new THREE.BoxGeometry(environment.goalZone.size[0], 0.1, environment.goalZone.size[2]),
+        new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x059669, emissiveIntensity: 0.5, roughness: 0.3 })
+      );
+      finishPad.position.set(environment.goalZone.position[0], environment.goalZone.position[1] - 0.05, environment.goalZone.position[2]);
+      this.environmentRoot.add(finishPad);
+
+      const poleGeo = new THREE.CylinderGeometry(0.08, 0.08, 3.5);
+      const poleMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.5 });
+      const leftPole = new THREE.Mesh(poleGeo, poleMat);
+      leftPole.position.set(environment.goalZone.position[0] - environment.goalZone.size[0] / 2, environment.goalZone.position[1] + 1.75, environment.goalZone.position[2]);
+      const rightPole = new THREE.Mesh(poleGeo, poleMat);
+      rightPole.position.set(environment.goalZone.position[0] + environment.goalZone.size[0] / 2, environment.goalZone.position[1] + 1.75, environment.goalZone.position[2]);
+
+      const bannerGeo = new THREE.BoxGeometry(environment.goalZone.size[0], 0.6, 0.1);
+      const bannerMat = new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xb91c1c, emissiveIntensity: 0.3 });
+      const banner = new THREE.Mesh(bannerGeo, bannerMat);
+      banner.position.set(environment.goalZone.position[0], environment.goalZone.position[1] + 3.2, environment.goalZone.position[2]);
+
+      this.environmentRoot.add(leftPole, rightPole, banner);
+    }
     const grid = new THREE.GridHelper(28, 28, 0x53726b, 0x294542);
     grid.position.y = 0.01;
     this.environmentRoot.add(grid);
@@ -164,8 +237,23 @@ export class ThreeSimulationRenderer implements SimulationRenderer {
 
   public setBlueprint(blueprint: MachineBlueprint, catalog: RuntimePartCatalog, variants: Readonly<Record<string, string>> = {}): void {
     const firstPart = blueprint.parts[0];
+    const spawnOffset: Vector3Tuple = firstPart === undefined
+      ? this.currentSpawn
+      : [
+          this.currentSpawn[0] - firstPart.transform.position[0],
+          this.currentSpawn[1] - firstPart.transform.position[1],
+          this.currentSpawn[2] - firstPart.transform.position[2],
+        ];
+    this.buildRoot.position.set(...spawnOffset);
+    this.socketRoot.position.set(...spawnOffset);
     this.followedPartId = firstPart === undefined ? undefined : String(firstPart.id);
-    if (firstPart !== undefined) this.followedPosition.set(...firstPart.transform.position);
+    if (firstPart !== undefined) {
+      this.followedPosition.set(
+        firstPart.transform.position[0] + spawnOffset[0],
+        firstPart.transform.position[1] + spawnOffset[1],
+        firstPart.transform.position[2] + spawnOffset[2]
+      );
+    }
     this.socketRoot.visible = true;
     this.lastFrame = undefined;
     for (const [partId, variant] of Object.entries(variants)) this.variants.set(partId, variant);
@@ -227,6 +315,8 @@ export class ThreeSimulationRenderer implements SimulationRenderer {
   public render(frame: SimulationFrame): void {
     this.lastFrame = frame;
     this.socketRoot.visible = false;
+    this.buildRoot.position.set(0, 0, 0);
+    this.socketRoot.position.set(0, 0, 0);
     const followed = this.followedPartId === undefined ? undefined : frame.transforms[this.followedPartId];
     if (followed !== undefined) {
       const position = new THREE.Vector3(...followed.position);
@@ -344,10 +434,22 @@ export class ThreeSimulationRenderer implements SimulationRenderer {
     this.camera.lookAt(this.cameraTarget);
   }
 
+  public resetCamera(): void {
+    this.theta = 2.79;
+    this.phi = 0.52;
+    this.updateCamera();
+    this.paint();
+  }
+
   private fitCameraToBlueprint(blueprint: MachineBlueprint): void {
+    const root = blueprint.parts[0];
+    const offsetX = root === undefined ? this.currentSpawn[0] : this.currentSpawn[0] - root.transform.position[0];
+    const offsetY = root === undefined ? this.currentSpawn[1] : this.currentSpawn[1] - root.transform.position[1];
+    const offsetZ = root === undefined ? this.currentSpawn[2] : this.currentSpawn[2] - root.transform.position[2];
+
     if (blueprint.parts.length === 0) {
-      this.cameraTarget.set(0, 1, 0);
-      this.radius = 9;
+      this.cameraTarget.set(this.currentSpawn[0], this.currentSpawn[1], this.currentSpawn[2]);
+      this.radius = 9.5;
       this.updateCamera();
       return;
     }
@@ -359,7 +461,7 @@ export class ThreeSimulationRenderer implements SimulationRenderer {
     const minZ = Math.min(...zs) - 1.4;
     const maxZ = Math.max(...zs) + 1.4;
     const span = Math.max(maxX - minX, maxZ - minZ, 3.5);
-    this.cameraTarget.set((minX + maxX) / 2, Math.max(0.65, Math.min(1.25, Math.min(...ys) + 0.25)), (minZ + maxZ) / 2);
+    this.cameraTarget.set((minX + maxX) / 2 + offsetX, Math.max(0.65, Math.min(1.25, Math.min(...ys) + 0.25)) + offsetY, (minZ + maxZ) / 2 + offsetZ);
     this.radius = Math.max(7, Math.min(18, span * 1.55 + 3));
     this.updateCamera();
   }

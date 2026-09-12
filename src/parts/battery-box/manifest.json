@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "kind": "core.part",
+  "id": "core.battery-box",
+  "revision": 1,
+  "assembly": {
+    "sockets": [
+      { "id": "mount-bottom", "accepts": ["mount"], "tags": ["mount"], "position": [0, -0.3, 0], "rotation": [0, 0, 0] },
+      { "id": "mount-front", "accepts": ["mount"], "tags": ["mount"], "position": [0, 0, 0.6], "rotation": [0, 0, 0] },
+      { "id": "mount-rear", "accepts": ["mount"], "tags": ["mount"], "position": [0, 0, -0.6], "rotation": [0, 3.141592653589793, 0] }
+    ],
+    "capabilities": ["core.energy"]
+  },
+  "physics": {
+    "body": { "mass": 6.0, "linearDamping": 0.3, "angularDamping": 1.5 },
+    "colliders": [
+      { "shape": "cuboid", "halfExtents": [0.6, 0.3, 0.6], "position": [0, 0, 0], "rotation": [0, 0, 0], "friction": 1.0, "restitution": 0 }
+    ]
+  },
+  "visual": {
+    "factory": "battery-box",
+    "revision": 1,
+    "source": "procedural-brief",
+    "sourceCommit": "6e60b5e22419464b4853e01ddb6c0e6f6659a733",
+    "normalization": { "metersPerUnit": 1, "upAxis": "y", "forwardAxis": "z", "origin": "part-frame" },
+    "variants": [
+      { "id": "A", "label": "Pin công nghệ (Li-Ion Box)", "factory": "battery-box" },
+      { "id": "B", "label": "Khối tạ đối trọng (Counterweight)", "factory": "battery-box" }
+    ]
+  },
+  "provenance": { "brief": "art-source/parts/battery-box/brief.md", "license": "STEM Lab procedural part", "toolCommit": "6e60b5e22419464b4853e01ddb6c0e6f6659a733" }
+}
