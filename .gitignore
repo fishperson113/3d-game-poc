@@ -5,6 +5,7 @@ test-results/
 coverage/
 .vite/
 *.local
+storage/
 
 # Repository-scoped agent tooling is installed from the pinned commit.
 .agents/skills/img2threejs/
