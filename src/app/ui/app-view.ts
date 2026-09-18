@@ -128,28 +128,25 @@ export class AppView {
           <main class="viewport-panel">
             <div class="viewport" data-role="viewport"></div>
 
-            <aside class="selection-popover" data-role="selection-popover" aria-live="polite" hidden>
+            <aside class="context-popover" data-role="context-popover" aria-live="polite" hidden>
               <div class="selection-popover-copy">
-                <span>Đang chọn</span>
+                <span data-role="context-kicker">Đang chọn</span>
                 <strong data-role="selection-name">Khối</strong>
+                <strong data-role="placement-label" hidden>Chọn vị trí</strong>
               </div>
-              <button data-action="rotate-selected" class="selection-action" title="Xoay khối 90 độ">↻ Xoay</button>
-              <button data-action="delete-selected" class="selection-delete" title="Gỡ khối khỏi xe">🗑 Gỡ khối</button>
-              <button data-action="clear-selection" class="selection-close" aria-label="Bỏ chọn khối" title="Bỏ chọn">✕</button>
-            </aside>
-
-            <!-- Điều khiển hướng dẫn đặt khối -->
-            <div class="viewport-overlay">
-              <span class="mode-label" data-role="mode-label">ĐANG LẮP XE</span>
-              <span class="placement-label" data-role="placement-label">Chọn một phụ tùng để bắt đầu.</span>
-              <div class="placement-actions" data-role="placement-actions">
-                <button data-action="previous-socket" title="Điểm gắn trước">← Trước</button>
-                <button data-action="next-socket" title="Điểm gắn tiếp theo">Sau →</button>
+              <div class="selection-actions" data-role="selection-actions">
+                <button data-action="rotate-selected" class="selection-action" title="Xoay khối 90 độ">↻ Xoay</button>
+                <button data-action="delete-selected" class="selection-delete" title="Gỡ khối khỏi xe">🗑 Gỡ khối</button>
+                <button data-action="clear-selection" class="selection-close" aria-label="Bỏ chọn khối" title="Bỏ chọn">✕</button>
+              </div>
+              <div class="placement-actions" data-role="placement-actions" hidden>
+                <button data-action="previous-socket" title="Đổi sang vị trí trước">← Đổi chỗ</button>
+                <button data-action="next-socket" title="Đổi sang vị trí tiếp theo">Đổi chỗ →</button>
                 <button data-action="rotate-placement" title="Xoay khối">↻ Xoay</button>
-                <button data-action="confirm-placement" class="btn-stem btn-confirm" title="Gắn vào xe">✓ Gắn</button>
-                <button data-action="cancel-placement" title="Bỏ phụ tùng này">Bỏ</button>
+                <button data-action="confirm-placement" class="placement-confirm" title="Xác nhận gắn khối">✓ Xác nhận</button>
+                <button data-action="cancel-placement" class="selection-close" aria-label="Bỏ khối đang đặt" title="Bỏ">✕</button>
               </div>
-            </div>
+            </aside>
 
             <!-- Bàn phím ảo lái xe trên màn hình (Touch Driving D-Pad) -->
             <div class="driving-dpad" data-role="driving-dpad">
@@ -346,53 +343,42 @@ export class AppView {
     this.element("rank-badge").textContent = totalStars >= 12 ? "👑 Cao thủ" : totalStars >= 6 ? "🔧 Khéo tay" : "🔰 Kỹ sư nhí";
     (this.root.querySelector("[data-action=toggle-sound]") as HTMLElement).textContent = model.soundMuted ? "🔇" : "🔊";
 
-    // Direct selection actions in the 3D viewport.
+    // One contextual dialog handles both unconfirmed placement and installed parts.
     const selection = model.selectedPartId === undefined ? undefined : model.blueprint.parts.find((part) => String(part.id) === model.selectedPartId);
-    const selectionPopover = this.element("selection-popover");
-    const showSelection = selection !== undefined && model.state === "Building";
-    selectionPopover.hidden = !showSelection;
-    selectionPopover.classList.toggle("is-visible", showSelection);
-    if (selection !== undefined) this.element("selection-name").textContent = palette.find(([id]) => id === selection.definitionId)?.[1] ?? selection.definitionId;
-
-    // Mode and Placement UI
-    const modeLabel = this.element("mode-label");
+    const contextPopover = this.element("context-popover");
+    const selectionActions = this.element("selection-actions");
+    const placementActions = this.element("placement-actions");
     const placementLabel = this.element("placement-label");
     const placement = model.placement;
-    if (model.state === "Running") {
-      modeLabel.textContent = "🎮 ĐANG CHƠI";
-      placementLabel.textContent = "Dùng W A S D hoặc các nút mũi tên để lái.";
-      this.element("placement-actions").style.display = "none";
-    } else if (model.state === "Failed") {
-      modeLabel.textContent = "⚠️ XE BỊ LẬT";
-      placementLabel.textContent = "Không sao, mình thử lại nhé!";
-      this.element("placement-actions").style.display = "none";
-    } else {
-      modeLabel.textContent = "🔧 ĐANG LẮP XE";
-      if (placement === undefined) {
-        placementLabel.textContent = model.blueprint.parts.length === 0 ? "Chọn khung xe để bắt đầu." : "Chọn phụ tùng, rồi bấm Chơi.";
-      } else {
-        const countStr = `(${String(placement.candidateIndex + 1)}/${String(placement.candidateCount)})`;
-        const defName = placement.definitionId.replace(/^core\./, "");
-        if (placement.valid) {
-          placementLabel.innerHTML = `<span style="color:#83d68c;font-weight:700">✓ Gắn được</span> ${defName} · ${countStr}`;
-        } else {
-          placementLabel.innerHTML = `<span style="color:#e76f67;font-weight:700">Chưa gắn được</span> · Thử xoay hoặc đổi điểm ${countStr}`;
-        }
-      }
-      this.element("placement-actions").style.display = placement === undefined ? "none" : "flex";
+    const showContext = model.state === "Building" && (placement !== undefined || selection !== undefined);
+    contextPopover.hidden = !showContext;
+    contextPopover.classList.toggle("is-visible", showContext);
+    contextPopover.classList.toggle("is-placement", placement !== undefined);
+    if (placement !== undefined) {
+      this.element("context-kicker").textContent = placement.valid ? "Sẵn sàng gắn" : "Chọn chỗ khác";
+      this.element("selection-name").hidden = true;
+      placementLabel.hidden = false;
+      selectionActions.hidden = true;
+      placementActions.hidden = false;
+      const countStr = `${String(placement.candidateIndex + 1)}/${String(placement.candidateCount)}`;
+      const partName = palette.find(([id]) => id === placement.definitionId)?.[1] ?? placement.definitionId.replace(/^core\./, "");
+      placementLabel.textContent = placement.valid ? `${partName} · vị trí ${countStr}` : `Chưa gắn được · vị trí ${countStr}`;
       const confirmBtn = this.root.querySelector<HTMLButtonElement>("[data-action=confirm-placement]");
       if (confirmBtn) {
-        confirmBtn.disabled = placement !== undefined && !placement.valid;
-        if (placement !== undefined && !placement.valid) {
-          confirmBtn.style.opacity = "0.5";
-          confirmBtn.style.cursor = "not-allowed";
+        confirmBtn.disabled = !placement.valid;
+        if (!placement.valid) {
           confirmBtn.title = placement.reason ?? "Vị trí hoặc hướng không hợp lệ";
         } else {
-          confirmBtn.style.opacity = "1";
-          confirmBtn.style.cursor = "pointer";
           confirmBtn.title = "Gắn cố định vào xe";
         }
       }
+    } else {
+      this.element("context-kicker").textContent = "Đang chọn";
+      this.element("selection-name").hidden = false;
+      placementLabel.hidden = true;
+      selectionActions.hidden = false;
+      placementActions.hidden = true;
+      if (selection !== undefined) this.element("selection-name").textContent = palette.find(([id]) => id === selection.definitionId)?.[1] ?? selection.definitionId;
     }
 
     // Assembly guide
