@@ -2,7 +2,7 @@ services:
   - type: web
     name: besiege-lite-web-poc
     runtime: node
-    plan: starter
+    plan: free
     buildCommand: npm ci && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
@@ -13,9 +13,5 @@ services:
         value: https://besiege-lite-web-poc.onrender.com
       - key: BETTER_AUTH_SECRET
         generateValue: true
-      - key: DATABASE_PATH
-        value: /var/data/besiege.sqlite
-    disk:
-      name: besiege-data
-      mountPath: /var/data
-      sizeGB: 1
+      - key: DATABASE_URL
+        sync: false

@@ -24,6 +24,7 @@ The product record endpoint accepts only `imageUrl` and an `input` JSON object. 
 ## Operational notes
 
 - Set `BETTER_AUTH_SECRET` to a high-entropy value of at least 32 characters.
-- Keep the database on durable storage. Render's local filesystem is ephemeral unless a persistent disk is attached.
+- Store `DATABASE_URL` as a secret environment variable in Render. Use Neon's pooled connection string for the running application; no Render persistent disk is needed.
+- Schema migrations run automatically at server startup. For a larger production system, run migrations separately with a direct (non-pooled) Neon connection before deployment.
 - Serve production over HTTPS so authentication cookies use the `Secure` attribute.
 - This implementation provides technical data-minimization safeguards. Legal compliance also depends on the final privacy notice, parental-consent process, retention/deletion policy and the jurisdictions where the product is offered; those require product/legal review before a public launch.
