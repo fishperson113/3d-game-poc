@@ -7,6 +7,7 @@ import { batteryBoxVisualFactory } from "./battery-box/visual.adapter";
 import { crawlerTrackVisualFactory } from "./crawler-track/visual.adapter";
 import { motorModuleVisualFactory } from "./motor-module/visual.adapter";
 import { driveGearVisualFactory } from "./drive-gear/visual.adapter";
+import { supplyPodVisualFactory } from "./supply-pod/visual.adapter";
 
 const factories: Readonly<Record<string, PartVisualFactory>> = Object.freeze({
   "core.structural-block": structuralBlockVisualFactory,
@@ -17,6 +18,7 @@ const factories: Readonly<Record<string, PartVisualFactory>> = Object.freeze({
   "core.crawler-track": crawlerTrackVisualFactory,
   "core.motor-module": motorModuleVisualFactory,
   "core.drive-gear": driveGearVisualFactory,
+  "core.supply-pod": supplyPodVisualFactory,
 });
 
 export class PartVisualRegistry {

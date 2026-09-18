@@ -214,6 +214,16 @@ export class SimulationCompiler {
       if (physics === undefined) return error("simulation.compile.physics-metadata-missing", { partId: String(part.id) });
       bodySpecs.push({ id: String(part.id), transform: { position: [part.transform.position[0] + spawnOffset[0], part.transform.position[1] + spawnOffset[1], part.transform.position[2] + spawnOffset[2]], rotation: part.transform.rotation }, physics });
     }
+    if (environment.payload !== undefined) {
+      if (bodySpecs.some((body) => body.id === environment.payload?.id)) return error("simulation.compile.payload-id-conflict", { payloadId: environment.payload.id });
+      const payloadPhysics = this.dependencies.catalog.getPhysics(environment.payload.definitionId);
+      if (payloadPhysics === undefined) return error("simulation.compile.physics-metadata-missing", { partId: environment.payload.id });
+      bodySpecs.push({
+        id: environment.payload.id,
+        transform: { position: environment.payload.position, rotation: environment.payload.rotation },
+        physics: payloadPhysics,
+      });
+    }
     const joints: PhysicsJointSpec[] = [];
     const actuators = buildActuators(blueprint, this.dependencies.catalog);
     if (!actuators.ok) return actuators;

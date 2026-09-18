@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "kind": "core.part",
+  "id": "core.supply-pod",
+  "revision": 1,
+  "assembly": {
+    "sockets": [
+      { "id": "cargo-bottom", "accepts": ["cargo"], "tags": ["cargo"], "position": [0, -0.32, 0], "rotation": [0, 0, 0] }
+    ],
+    "capabilities": ["core.payload"]
+  },
+  "physics": {
+    "body": { "mass": 0.1, "linearDamping": 0.08, "angularDamping": 0.15 },
+    "colliders": [
+      { "shape": "cuboid", "halfExtents": [0.52, 0.32, 0.52], "position": [0, 0, 0], "rotation": [0, 0, 0], "friction": 0.9, "restitution": 0.12 }
+    ]
+  },
+  "visual": {
+    "factory": "supply-pod",
+    "revision": 1,
+    "source": "procedural-brief",
+    "sourceCommit": "level-design-supply-pod-v1",
+    "normalization": { "metersPerUnit": 1, "upAxis": "y", "forwardAxis": "z", "origin": "part-frame" },
+    "variants": [
+      { "id": "A", "label": "Supply Pod", "factory": "supply-pod" },
+      { "id": "B", "label": "Rescue Crate", "factory": "supply-pod" }
+    ]
+  },
+  "provenance": { "brief": "BA Supply Pod challenge", "license": "STEM Lab procedural part", "toolCommit": "level-design-supply-pod-v1" }
+}

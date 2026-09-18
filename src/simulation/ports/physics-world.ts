@@ -22,6 +22,13 @@ export interface GoalZoneSpec {
   readonly size: Vector3Tuple;
 }
 
+export interface ChallengePayloadSpec {
+  readonly id: string;
+  readonly definitionId: string;
+  readonly position: Vector3Tuple;
+  readonly rotation: Vector3Tuple;
+}
+
 export interface SimulationEnvironment {
   readonly gravity: Vector3Tuple;
   readonly spawn: Vector3Tuple;
@@ -29,6 +36,7 @@ export interface SimulationEnvironment {
   readonly ramp?: { readonly halfExtents: Vector3Tuple; readonly position: Vector3Tuple; readonly rotation: Vector3Tuple } | undefined;
   readonly obstacles?: readonly ObstacleSpec[] | undefined;
   readonly goalZone?: GoalZoneSpec | undefined;
+  readonly payload?: ChallengePayloadSpec | undefined;
 }
 
 export interface DefaultSimulationEnvironment extends SimulationEnvironment {

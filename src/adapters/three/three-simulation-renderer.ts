@@ -50,6 +50,8 @@ export class ThreeSimulationRenderer implements SimulationRenderer {
   private renderer: THREE.WebGLRenderer | undefined;
   private ghost: PartVisualInstance | undefined;
   private ghostRoot: THREE.Group | undefined;
+  private payloadVisual: PartVisualInstance | undefined;
+  private payloadId: string | undefined;
   private disposed = false;
   private theta = 2.79;
   private phi = 0.52;
@@ -143,6 +145,7 @@ export class ThreeSimulationRenderer implements SimulationRenderer {
 
   public setEnvironment(environment: SimulationEnvironment): void {
     this.currentSpawn = environment.spawn;
+    this.clearPayloadVisual();
     this.disposeObjectChildren(this.environmentRoot);
     const ambient = new THREE.HemisphereLight(0xc8e6e3, 0x111827, 1.8);
     this.environmentRoot.add(ambient);
@@ -232,6 +235,20 @@ export class ThreeSimulationRenderer implements SimulationRenderer {
     const grid = new THREE.GridHelper(28, 28, 0x53726b, 0x294542);
     grid.position.y = 0.01;
     this.environmentRoot.add(grid);
+    if (environment.payload !== undefined) {
+      const factory = this.visualRegistry.get(environment.payload.definitionId);
+      if (factory !== undefined) {
+        const visual = factory.create("A");
+        visual.root.position.set(...environment.payload.position);
+        visual.root.quaternion.set(...quaternionFromEuler(environment.payload.rotation));
+        visual.root.userData.partId = environment.payload.id;
+        visual.root.userData.definitionId = environment.payload.definitionId;
+        visual.root.traverse((object) => { object.userData.partId = environment.payload?.id; });
+        this.payloadVisual = visual;
+        this.payloadId = environment.payload.id;
+        this.environmentRoot.add(visual.root);
+      }
+    }
     this.paint();
   }
 
@@ -325,7 +342,7 @@ export class ThreeSimulationRenderer implements SimulationRenderer {
       this.updateCamera();
     }
     for (const [partId, transform] of Object.entries(frame.transforms)) {
-      const root = this.partRoots.get(partId);
+      const root = partId === this.payloadId ? this.payloadVisual?.root : this.partRoots.get(partId);
       if (root === undefined) continue;
       root.position.set(...transform.position);
       root.quaternion.set(...transform.rotation);
@@ -349,6 +366,7 @@ export class ThreeSimulationRenderer implements SimulationRenderer {
     this.disposed = true;
     this.clearPartVisuals();
     this.setGhost(undefined);
+    this.clearPayloadVisual();
     this.disposeObjectChildren(this.environmentRoot);
     this.disposeObjectChildren(this.socketRoot);
     this.socketMarkers.clear();
@@ -410,6 +428,15 @@ export class ThreeSimulationRenderer implements SimulationRenderer {
     this.visuals.clear();
     this.partRoots.clear();
     this.socketMarkers.clear();
+  }
+
+  private clearPayloadVisual(): void {
+    if (this.payloadVisual !== undefined) {
+      this.environmentRoot.remove(this.payloadVisual.root);
+      this.payloadVisual.dispose();
+    }
+    this.payloadVisual = undefined;
+    this.payloadId = undefined;
   }
 
   private disposeObjectChildren(group: THREE.Group): void {

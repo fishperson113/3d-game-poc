@@ -21,16 +21,16 @@ export const STEM_CHALLENGES: readonly ChallengeDefinition[] = Object.freeze([
   {
     id: "the-gap",
     number: 2,
-    title: "Vực Thẳm Nứt Sâu",
-    subtitle: "Khoảng trống giữa 2 vách đá hiểm trở",
-    description: "Hai bục sàn phẳng bị ngăn cách bởi hố sâu rộng 2.4m. Liệu xe của bạn có bắc cầu qua được?",
-    stemTip: "💡 Mẹo STEM: Xe 4 bánh ngắn sẽ bị cắm đầu rơi hố. Hãy lắp thêm Thanh Dầm Dài hoặc Cụm Bánh Xích để vắt ngang qua hố sâu!",
-    icon: "🕳️",
-    targetTimeSeconds: 12,
-    unlockReward: "Thanh Dầm Dài 🏗️ & Băng Xích Xe Tăng 🚜",
+    title: "Tiếp Tế Qua Vùng Ngập",
+    subtitle: "Đưa hộp vật tư đến khu cứu hộ an toàn",
+    description: "Thiết kế một phương tiện đỡ được Supply Pod, vượt vùng ngập và đưa hộp hàng tới khu cứu hộ.",
+    stemTip: "Quan sát Supply Pod khi xe bắt đầu chạy: hộp trượt trước hay cả chiếc xe mất cân bằng trước?",
+    icon: "📦",
+    targetTimeSeconds: 60,
     environment: {
       gravity: [0, -9.81, 0],
       spawn: [0, 0.75, -8],
+      payload: { id: "supply-pod", definitionId: "core.supply-pod", position: [0, 3, -8], rotation: [0, 0, 0] },
       ground: { halfExtents: [6, 0.2, 4.5], position: [0, -0.2, -6.5] }, // z from -11 to -2
       obstacles: [
         // Sàn bên kia vực

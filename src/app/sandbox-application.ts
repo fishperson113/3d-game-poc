@@ -284,13 +284,18 @@ export class SandboxApplication {
 
         // Check victory or failure
         if (this.state === "Running") {
+          const currentChallenge = this.getCurrentChallenge();
           const rootId = this.blueprint.parts[0]?.id;
-          const rootTransform = rootId === undefined ? undefined : this.renderer.getLastFrame()?.transforms[String(rootId)];
-          const evaluation = this.evaluator.step(delta, rootTransform?.position);
+          const transforms = this.renderer.getLastFrame()?.transforms;
+          const rootTransform = rootId === undefined ? undefined : transforms?.[String(rootId)];
+          const missionTransform = currentChallenge.environment.payload === undefined
+            ? rootTransform
+            : transforms?.[currentChallenge.environment.payload.id];
+          const evaluation = this.evaluator.step(delta, missionTransform?.position);
 
           if (evaluation.status === "completed") {
             soundEffects.playVictory();
-            const current = this.getCurrentChallenge();
+            const current = currentChallenge;
             this.aiService.triggerCelebration(current.title);
             const existingStars = this.challengeProgress[current.id]?.stars ?? 0;
             this.challengeProgress[current.id] = {
@@ -671,6 +676,7 @@ export class SandboxApplication {
   private async stopAndReset(): Promise<void> {
     try {
       await this.cleanupSimulation();
+      this.renderer.setEnvironment(this.getCurrentChallenge().environment);
       await this.syncBlueprint();
       this.state = "Building";
       this.feedback = { tone: "good", message: "Đã đưa xe về xưởng chế tạo tại vạch xuất phát. Bạn có thể chỉnh sửa tiếp." };

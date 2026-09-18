@@ -9,6 +9,7 @@ import batteryBoxRaw from "./battery-box/manifest.json";
 import crawlerTrackRaw from "./crawler-track/manifest.json";
 import motorModuleRaw from "./motor-module/manifest.json";
 import driveGearRaw from "./drive-gear/manifest.json";
+import supplyPodRaw from "./supply-pod/manifest.json";
 
 const rawManifests: readonly unknown[] = [
   structuralRaw,
@@ -19,6 +20,7 @@ const rawManifests: readonly unknown[] = [
   crawlerTrackRaw,
   motorModuleRaw,
   driveGearRaw,
+  supplyPodRaw,
 ];
 
 export interface RuntimePartCatalog extends PartCatalog {

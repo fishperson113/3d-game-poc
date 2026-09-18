@@ -29,11 +29,11 @@ Tài liệu này là tài liệu phân tích, **không phải xác nhận rằng
 |---|---|---|---|---|
 | BuildLoop | Nền tảng trẻ nhận mission, lập kế hoạch, build, test và reflection | STEM Car Lab / Besiege-lite Web PoC | 🟡 Tương đương | Tên sản phẩm khác, vòng lặp build–test đã tồn tại |
 | Challenge | Một nhiệm vụ kỹ thuật có bối cảnh, luật và điều kiện thành công | `ChallengeDefinition` | ✅ Đã có | Khai báo tại `src/challenge/domain/contracts.ts` |
-| Mission | Mục tiêu mà trẻ phải hoàn thành | `description`, `goalZone`, evaluator | 🟠 Một phần | Hiện mission tập trung vào đưa **xe** tới đích, chưa phải đưa payload tới đích |
+| Mission | Mục tiêu mà trẻ phải hoàn thành | `description`, `goalZone`, evaluator | ✅ Đã có | Màn 2 đánh giá vị trí của Supply Pod thay vì chassis |
 | BuildLoop Core Kit | Tập linh kiện vật lý được phép sử dụng | Part catalog gồm 8 loại phụ tùng | 🟡 Tương đương | Danh mục nằm trong `src/parts/` và palette trong `src/app/ui/app-view.ts` |
-| Supply Pod | Hộp vật tư 100g cần được vận chuyển | Chưa có part mang tên Supply Pod | ❌ Chưa có | Đề xuất MVP: dùng part `core.battery-box`/“Hộp pin” hiện có để đóng vai Supply Pod; không tạo component mới |
+| Supply Pod | Hộp vật tư 100g cần được vận chuyển | `core.supply-pod` | ✅ Đã có | Body độc lập 0,1 kg, có collider và visual riêng; không thuộc blueprint và không gắn joint vào xe |
 | Base Camp | Vị trí xuất phát của hệ thống và Supply Pod | `environment.spawn` | 🟡 Tương đương | Mỗi challenge đã có tọa độ spawn |
-| Rescue Zone | Khu vực đích phải chứa hoàn toàn Supply Pod | `environment.goalZone` | 🟠 Một phần | Goal zone hiện kiểm tra vị trí root/chassis, chưa kiểm tra Hộp pin |
+| Rescue Zone | Khu vực đích phải chứa hoàn toàn Supply Pod | `environment.goalZone` | 🟠 Một phần | Màn 2 đã kiểm tra tâm Supply Pod; chưa kiểm tra toàn bộ kích thước hộp nằm trong zone |
 | Flood Zone | Dải nguy hiểm mà Supply Pod không được chạm | Khoảng trống trong challenge `the-gap` | 🟡 Tương đương | Địa hình Màn 2 đã có hai bờ và khoảng trống ở giữa; chưa có semantic/trigger riêng tên Flood Zone |
 | Start Line | Ranh giới trẻ phải đứng sau khi test bắt đầu | Vạch xuất phát trong môi trường số | 🟠 Một phần | Có ý nghĩa hình ảnh/spawn; ứng dụng không thể biết vị trí cơ thể trẻ ngoài đời |
 | Rescue mission | Bối cảnh xã hội tạo mục tiêu cho challenge | Chưa có trong wording hiện tại | ❌ Chưa có | Màn 2 hiện dùng bối cảnh “vực thẳm” |
@@ -49,7 +49,7 @@ Tài liệu này là tài liệu phân tích, **không phải xác nhận rằng
 | Time limit | Tối đa 60 giây cho một lần test | `targetTimeSeconds` và `elapsedSeconds` | 🟠 Một phần | Engine có timer và mốc tính sao; chưa có hard timeout 60 giây cho mission này |
 | Distance completed | Quãng đường Supply Pod đã đi | `distanceToGoal` trong `EvaluationSnapshot` | 🟠 Một phần | Được tính trong lúc chạy nhưng chưa lưu thành kết quả attempt và đang dựa vào chassis |
 | System stable | Hệ thống không lật, gãy, kẹt hoặc mất cân bằng | Physics diagnostics theo position/rotation | 🟠 Một phần | Có thể phát hiện một số trạng thái xe; chưa đánh giá stability của payload theo từng test |
-| Payload dropped | Supply Pod rơi khỏi carrier | Chưa có payload semantics/breakable attachment | ❌ Chưa có | Fixed joint hiện không mô phỏng payload rời khỏi xe |
+| Payload dropped | Supply Pod rơi khỏi carrier | Free physics body `supply-pod` | ✅ Đã có physics | Pod có thể rơi, trượt, nảy và văng vì không có joint; diagnosis/report cho sự kiện rơi vẫn chưa có |
 | Hint Level | Mức hỗ trợ tăng dần, ưu tiên câu hỏi Socratic | `HintTier` và `SocraticTutor` gồm 5 tầng | ✅ Đã có nền tảng | Một số hint hiện vẫn nói thẳng component/giải pháp, chưa đúng wording BA |
 | Adult intervention | Số lần người lớn hỗ trợ | Không có event hoặc form ghi nhận | ❌ Chưa có | MVP có thể cho tự khai báo; hệ thống không thể tự quan sát ngoài đời |
 | Reflection | Trẻ giải thích thay đổi và bằng chứng | AI Tutor có hội thoại/hint | 🟠 Một phần | Chưa có bước reflection có cấu trúc và chưa lưu câu trả lời |
@@ -61,9 +61,9 @@ Tài liệu này là tài liệu phân tích, **không phải xác nhận rằng
 | Nội dung BA | Hệ thống hiện tại | Đánh giá |
 |---|---|---|
 | “Sau một trận mưa lớn, khu dân cư bị cô lập” | Màn 2 có hai vùng đất bị ngăn bởi một khoảng trống | 🟡 Có thể đổi narrative mà không đổi topology |
-| “Người dân cần hộp vật tư chứa bộ lọc nước” | Chưa có payload hoặc narrative cứu hộ | ❌ Cần wording và payload role |
-| “Đưa Supply Pod từ Base Camp đến Rescue Zone” | Xe xuất phát ở `spawn` và đi tới `goalZone` | 🟠 Luồng A→B đã có; đối tượng được đánh giá đang là chassis |
-| “Supply Pod nặng 100g” | `battery-box` có physics mass riêng nhưng đơn vị mô phỏng không đại diện trực tiếp 100g | 🟠 Có mass vật lý tương đối; không nên tuyên bố mapping 1:1 nếu chưa chuẩn hóa scale |
+| “Người dân cần hộp vật tư chứa bộ lọc nước” | Màn 2 “Tiếp Tế Qua Vùng Ngập” và visual Supply Pod | ✅ Đã có narrative/payload cơ bản |
+| “Đưa Supply Pod từ Base Camp đến Rescue Zone” | Pod spawn phía trên xe và evaluator dùng transform của pod | ✅ Đã có luồng vật lý A→B cơ bản |
+| “Supply Pod nặng 100g” | `core.supply-pod` có mass `0.1` | ✅ Đã có trong physics scale hiện tại |
 | “Hộp hàng không chạm Flood Zone” | Xe thất bại khi root rơi dưới `failThresholdY` | 🟠 Chưa theo dõi riêng Hộp pin và chưa có Flood Zone trigger |
 | “Không trực tiếp cầm/đẩy hộp sau khi test bắt đầu” | Khi Running, trẻ điều khiển bằng W/A/S/D; editor không phải luồng chính | 🟡 Trong mô phỏng có thể coi nút điều khiển là tương đương thao tác từ Start Zone |
 | “Không cho xem mô hình mẫu” | Menu “Xe có sẵn” vẫn tồn tại; challenge card còn nêu component nên dùng | ❌ Hiện tại đang làm lộ solution |
@@ -78,7 +78,7 @@ Tài liệu này là tài liệu phân tích, **không phải xác nhận rằng
 | Tổng thời gian | 45–60 phút | Không có session timer | ❌ Chưa có |
 | Start → Goal | 50cm | Spawn và goal của Màn 2 cách nhau theo world unit | 🟡 Có khoảng cách mô phỏng; chưa quy đổi ra cm |
 | Flood Zone | Rộng 20cm | Khoảng trống Màn 2 có kích thước world unit | 🟡 Có địa hình tương đương; chưa quy đổi ra cm |
-| Supply Pod | Hộp 100g chuẩn | Có thể dùng Hộp pin hiện có làm đại diện | 🟠 Cần định danh role |
+| Supply Pod | Hộp 100g chuẩn | `core.supply-pod`, mass 0,1 kg | ✅ Đã có |
 | Time limit/test | 60 giây | Evaluator đo elapsed time nhưng chưa hard-fail ở 60 giây | 🟠 Một phần |
 | Vật liệu | Chỉ Core Kit | Part palette/catalog giới hạn | ✅ Đã có |
 | Điểm điều khiển | Đứng sau Start Line | Điều khiển từ xa bằng bàn phím/D-pad | 🟡 Tương đương trong digital simulation |
@@ -91,8 +91,8 @@ Tài liệu này là tài liệu phân tích, **không phải xác nhận rằng
 
 | Điều kiện BA | Logic hiện tại | Khoảng trống |
 |---|---|---|
-| Supply Pod hoàn toàn trong Rescue Zone | `RealtimeChallengeEvaluator` kiểm tra root nằm trong `goalZone` | Phải kiểm tra body Hộp pin và kích thước/biên của pod, không chỉ một điểm chassis |
-| Supply Pod không chạm Flood Zone | Fail khi root xuống dưới ngưỡng Y | Cần theo dõi Hộp pin và đánh dấu vùng không được chạm trong suốt attempt |
+| Supply Pod hoàn toàn trong Rescue Zone | Màn 2 đưa position của pod vào `RealtimeChallengeEvaluator` | Mới kiểm tra tâm pod; cần xét half-extents để đáp ứng chữ “hoàn toàn” |
+| Supply Pod không chạm Flood Zone | Fail threshold hiện áp dụng trên position của pod | Đã bắt được pod rơi xuống vùng ngập; chưa lưu lịch sử contact với một trigger Flood Zone tường minh |
 | Vật bên trong không rơi | Không mô phỏng vật bên trong | Có thể để thành checklist tự xác nhận trong physical test; 🚫 không cần mô phỏng cho MVP số |
 | Trẻ không chạm Supply Pod | Không có camera/sensor quan sát trẻ | Có thể dùng checkbox cam kết hoặc self-report; không thể tự xác minh |
 | Hoàn thành ≤60 giây | Có `elapsedSeconds` | Thêm hard timeout và result `timed-out` |
@@ -148,7 +148,7 @@ Parent Report đang hiển thị attempt count, hint tier và autonomy score. `P
 
 ### 10.2 Goal Zone đã có nhưng target object chưa đúng
 
-`RealtimeChallengeEvaluator` hiện nhận `rootPosition` và kết luận hoàn thành khi root nằm trong goal. BA yêu cầu **Supply Pod** nằm hoàn toàn trong Rescue Zone. Hai điều này chỉ giống nhau khi giả định payload luôn dính chặt vào chassis; BA không cho phép giả định đó.
+`RealtimeChallengeEvaluator` vẫn nhận một position mục tiêu. Với Màn 2, application truyền position của `supply-pod` thay vì root/chassis. Phần còn thiếu là xét kích thước collider để bảo đảm **toàn bộ** pod nằm trong Rescue Zone, không chỉ tâm pod.
 
 ### 10.3 Flood-like terrain đã có nhưng Flood Zone rule chưa có
 
@@ -169,7 +169,7 @@ Trẻ có thể test nhiều lần, nhưng controlled experimentation cần thê
 | BA concept | MVP mapping |
 |---|---|
 | Challenge mới | Thay narrative và rules của Màn 2 `the-gap` |
-| Supply Pod | Part `core.battery-box` hiện có |
+| Supply Pod | Free body `core.supply-pod`, không xuất hiện trong palette |
 | Base Camp | `environment.spawn` hiện có |
 | Flood Zone | Khoảng trống giữa hai bờ của Màn 2 |
 | Rescue Zone | `environment.goalZone` hiện có |
@@ -192,11 +192,11 @@ Sau trận mưa lớn, đường đến khu cứu hộ đã bị ngập. Ngườ
 
 ### Nhiệm vụ
 
-Hãy dùng các phụ tùng trong xưởng để chế tạo một phương tiện đưa Supply Pod từ Trạm xuất phát đến Khu cứu hộ. Trong thử thách này, **Hộp pin đóng vai Supply Pod**.
+Hãy dùng các phụ tùng trong xưởng để chế tạo một phương tiện đưa Supply Pod từ Trạm xuất phát đến Khu cứu hộ. Supply Pod sẽ rơi xuống khi bài kiểm tra bắt đầu, vì vậy phương tiện cần đỡ và giữ hộp hàng trong suốt hành trình.
 
 ### Luật
 
-- Gắn Supply Pod vào phương tiện trước khi bắt đầu.
+- Đặt phương tiện bên dưới để đỡ Supply Pod khi bài kiểm tra bắt đầu.
 - Sau khi bấm **Chơi**, con chỉ sử dụng các nút điều khiển.
 - Supply Pod không được chạm vùng ngập.
 - Supply Pod phải vào Khu cứu hộ trong tối đa 60 giây.
@@ -220,6 +220,7 @@ Không hiển thị xe mẫu hoặc chỉ định phải dùng bánh, dầm, xí
 | Hint tiers | `src/ai/domain/socratic-tutor.ts` |
 | Parent report | `src/ai/domain/parent-insights-evaluator.ts` và `src/ai/ui/digital-to-physical-modal.ts` |
 | Battery box candidate | `src/parts/battery-box/manifest.json` |
+| Supply Pod physics/visual | `src/parts/supply-pod/manifest.json`, `visual.generated.ts`, `visual.adapter.ts` |
 
 ## 14. Kết luận traceability
 
@@ -227,8 +228,8 @@ Repository đã có nền tảng mạnh cho một challenge A→B: editor tự d
 
 Khoảng cách nghiệp vụ cốt lõi gồm ba điểm:
 
-1. Chuyển đối tượng thành công từ **chassis** sang **Supply Pod**.
+1. Kiểm tra toàn bộ kích thước Supply Pod nằm trong Rescue Zone và ghi nhận contact với Flood Zone.
 2. Chuyển các lần retry thành bằng chứng **Version 1 → một biến → Version 2**.
-3. Chuyển report/hint từ nội dung tổng quát hoặc chỉ dẫn solution sang nội dung dựa trên bằng chứng của payload và từng attempt.
+3. Chuyển report/hint từ nội dung tổng quát sang nội dung dựa trên bằng chứng của payload và từng attempt.
 
 Đây là mở rộng domain và data flow trên component hiện có, không yêu cầu sáng tạo thêm part cho MVP.

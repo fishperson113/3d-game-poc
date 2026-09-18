@@ -32,13 +32,14 @@ describe("authoritative part manifests", () => {
 
   it("registers the catalog atomically after every manifest has passed", () => {
     const catalog = new StaticPartCatalog();
-    expect(catalog.listManifests()).toHaveLength(8);
+    expect(catalog.listManifests()).toHaveLength(9);
     expect(catalog.get("core.structural-block")).toBeDefined();
     expect(catalog.get("core.heavy-beam")).toBeDefined();
     expect(catalog.get("core.crawler-track")).toBeDefined();
     expect(catalog.get("core.motor-module")).toBeDefined();
     expect(catalog.get("core.drive-gear")).toBeDefined();
     expect(catalog.get("core.battery-box")).toBeDefined();
+    expect(catalog.get("core.supply-pod")).toBeDefined();
     expect(catalog.getPhysics("core.powered-wheel")?.actuator?.kind).toBe("wheel");
     expect(catalog.getVisual("core.steering-hinge")?.variants).toHaveLength(2);
   });

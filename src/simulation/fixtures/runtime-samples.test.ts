@@ -7,6 +7,7 @@ import { rootTransform } from "../../building/application/assembly-solver";
 import { SimulationCompiler } from "../application/simulation-compiler";
 import type { RuntimeTelemetryEvent } from "../ports/runtime-telemetry";
 import { createRuntimeSampleFixture, RUNTIME_SAMPLES } from "./runtime-samples";
+import { STEM_CHALLENGES } from "../../challenge/domain/challenges-data";
 
 describe("runtime vehicle samples", () => {
   beforeAll(async () => { await initializeRapier(); });
@@ -51,6 +52,32 @@ describe("runtime vehicle samples", () => {
     if (compiled.ok) {
       expect(compiled.value.specification.actuators).toHaveLength(0);
       compiled.value.world.dispose();
+    }
+  });
+
+  it("spawns the Supply Pod as a free body that falls under gravity without a fixed joint", () => {
+    const challenge = STEM_CHALLENGES.find((item) => item.id === "the-gap");
+    expect(challenge?.environment.payload).toBeDefined();
+    if (challenge === undefined || challenge.environment.payload === undefined) return;
+    const catalog = new StaticPartCatalog();
+    const compiler = new SimulationCompiler({ catalog, events: new NamespacedEventBus(), createPhysicsWorld: () => new RapierPhysicsWorld() });
+    const compiled = compiler.compile(createRuntimeSampleFixture(catalog), challenge.environment);
+    expect(compiled.ok).toBe(true);
+    if (!compiled.ok) return;
+    const { specification, world } = compiled.value;
+    try {
+      const payloadId = challenge.environment.payload.id;
+      expect(specification.bodies.find((body) => body.id === payloadId)?.physics.body.mass).toBe(0.1);
+      expect(specification.joints.some((joint) => joint.bodyA === payloadId || joint.bodyB === payloadId)).toBe(false);
+      const before = world.snapshot().transforms[payloadId];
+      for (let step = 0; step < 90; step += 1) world.step(1 / 60);
+      const after = world.snapshot().transforms[payloadId];
+      expect(before).toBeDefined();
+      expect(after).toBeDefined();
+      expect(after?.position[1] ?? 99).toBeLessThan((before?.position[1] ?? 0) - 0.5);
+      expect(after?.position[1] ?? -99).toBeGreaterThan(-2.2);
+    } finally {
+      world.dispose();
     }
   });
 
