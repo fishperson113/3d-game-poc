@@ -27,6 +27,9 @@ export const STEM_CHALLENGES: readonly ChallengeDefinition[] = Object.freeze([
     stemTip: "Quan sát Supply Pod khi xe bắt đầu chạy: hộp trượt trước hay cả chiếc xe mất cân bằng trước?",
     icon: "📦",
     targetTimeSeconds: 60,
+    maxTimeSeconds: 60,
+    targetHalfExtents: [0.52, 0.32, 0.52],
+    failThresholdY: -0.05,
     environment: {
       gravity: [0, -9.81, 0],
       spawn: [0, 0.75, -8],

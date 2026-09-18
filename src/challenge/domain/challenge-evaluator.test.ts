@@ -69,6 +69,24 @@ describe("RealtimeChallengeEvaluator", () => {
     expect(snap.message).toContain("rơi khỏi mặt đường");
   });
 
+  it("requires the whole Supply Pod to fit in the Rescue Zone", () => {
+    const evaluator = new RealtimeChallengeEvaluator(gap);
+    evaluator.start();
+    const nearEdge = evaluator.step(1, [2.2, 0.5, 9.5]);
+    expect(nearEdge.status).toBe("running");
+    const centeredEvaluator = new RealtimeChallengeEvaluator(gap);
+    centeredEvaluator.start();
+    expect(centeredEvaluator.step(1, [0, 0.5, 9.5]).status).toBe("completed");
+  });
+
+  it("ends the Supply Pod test after 60 seconds", () => {
+    const evaluator = new RealtimeChallengeEvaluator(gap);
+    evaluator.start();
+    const timedOut = evaluator.step(60, [0, 0.5, -8]);
+    expect(timedOut.status).toBe("failed");
+    expect(timedOut.message).toContain("60 giây");
+  });
+
   it("resets state back to pending", () => {
     const evaluator = new RealtimeChallengeEvaluator(warmup);
     evaluator.start();

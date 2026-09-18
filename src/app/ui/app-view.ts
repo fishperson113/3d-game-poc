@@ -28,6 +28,23 @@ export interface AppViewModel {
   readonly showWelcomeModal: boolean;
   readonly showChallengeModal: boolean;
   readonly showAdvancedPanel: boolean;
+  readonly supplyMission?: {
+    readonly stage: "briefing" | "plan" | "build-v1" | "review-v1" | "build-v2" | "reflection" | "report";
+    readonly showModal: boolean;
+    readonly attempts: readonly {
+      readonly version: 1 | 2;
+      readonly completed: boolean;
+      readonly elapsedSeconds: number;
+      readonly distanceCm: number;
+      readonly stable: boolean;
+      readonly touchedFlood: boolean;
+      readonly partCount: number;
+    }[];
+    readonly variableChanged?: string;
+    readonly reflection?: string;
+    readonly adultHelp?: boolean;
+    readonly highestHintTier: number;
+  };
 }
 
 export const palette = [
@@ -66,6 +83,7 @@ export class AppView {
 
         <div class="toolbar" data-role="toolbar">
           <button data-action="open-challenges" class="level-chip" data-role="level-badge" title="Chọn màn chơi">🎯 Màn 1</button>
+          <button data-action="open-supply-mission" class="mission-chip" data-role="mission-chip" style="display:none">📦 Nhiệm vụ</button>
           <div class="toolbar-spacer"></div>
           <button data-action="start" class="btn-stem btn-start context-action" title="Cho xe chạy">▶ Chơi</button>
           <button data-action="stop" class="btn-stem btn-stop context-action" title="Quay lại lắp xe">■ Dừng</button>
@@ -75,7 +93,7 @@ export class AppView {
             <div class="tools-popover">
               <p class="tools-title">Thêm công cụ</p>
               <button data-action="reset" class="btn-stem btn-reset" title="Đưa xe về vạch xuất phát">↻ Làm lại</button>
-              <div class="sample-tools">
+              <div class="sample-tools" data-role="sample-tools">
                 <label class="sample-picker" title="Chọn một chiếc xe có sẵn">
                   <span>Xe có sẵn</span>
                   <select data-role="sample-select" data-action="sample-select"></select>
@@ -233,6 +251,13 @@ export class AppView {
               <button class="btn-stem btn-big" data-action="retry">Chơi lại 🔁</button>
             </div>
           </div>
+        </div>
+
+        <div class="modal-backdrop mission-modal" data-role="supply-mission-modal" style="display:none;">
+          <section class="modal-card mission-card" aria-labelledby="mission-title">
+            <button class="close-btn mission-close" data-action="close-supply-mission" aria-label="Đóng">✕</button>
+            <div data-role="supply-mission-content"></div>
+          </section>
         </div>
 
         <!-- MODAL 5: Mobile Device Fallback Overlay -->
@@ -430,6 +455,8 @@ export class AppView {
     this.element("welcome-modal").style.display = model.showWelcomeModal ? "flex" : "none";
     this.element("challenge-modal").style.display = model.showChallengeModal ? "flex" : "none";
 
+    this.renderSupplyMission(model.supplyMission);
+
     // Render Challenges Grid in modal
     if (model.showChallengeModal) {
       const grid = this.element("challenges-grid");
@@ -498,6 +525,117 @@ export class AppView {
     } else {
       failModal.style.display = "none";
     }
+  }
+
+  private renderSupplyMission(mission: AppViewModel["supplyMission"]): void {
+    const chip = this.element("mission-chip");
+    const modal = this.element("supply-mission-modal");
+    const sampleTools = this.element("sample-tools");
+    if (mission === undefined) {
+      chip.style.display = "none";
+      modal.style.display = "none";
+      sampleTools.style.display = "grid";
+      return;
+    }
+    chip.style.display = "inline-flex";
+    sampleTools.style.display = "none";
+    const labels: Record<typeof mission.stage, string> = {
+      briefing: "Nhận nhiệm vụ",
+      plan: "Lập kế hoạch",
+      "build-v1": "Version 1",
+      "review-v1": "Xem V1",
+      "build-v2": "Version 2",
+      reflection: "Nhìn lại",
+      report: "Hoàn thành",
+    };
+    chip.textContent = `📦 ${labels[mission.stage]}`;
+    modal.style.display = mission.showModal ? "flex" : "none";
+    if (!mission.showModal) return;
+    const content = this.element("supply-mission-content");
+    if (mission.stage === "briefing") {
+      content.innerHTML = `
+        <p class="mission-kicker">NHIỆM VỤ CỨU HỘ</p>
+        <h2 id="mission-title">Tiếp tế qua vùng ngập</h2>
+        <p class="mission-lead">Đưa hộp vật tư 100g từ Trạm xuất phát đến Khu cứu hộ.</p>
+        <div class="mission-scene" aria-label="Lộ trình nhiệm vụ"><span>🏕️ Trạm xuất phát</span><b>≈ 50cm</b><span>🏥 Khu cứu hộ</span></div>
+        <ul class="mission-rules">
+          <li>📦 Đỡ và giữ Supply Pod trên xe.</li>
+          <li>🌊 Không để hộp chạm vùng ngập.</li>
+          <li>⏱️ Hoàn thành trong 60 giây.</li>
+        </ul>
+        <label class="mission-check"><input type="checkbox" data-role="mission-understood" /> Con đã hiểu luật và sẽ kiểm tra sản phẩm trước khi trả lời Rô-Bô.</label>
+        <p class="mission-error" data-role="mission-error" aria-live="polite"></p>
+        <button class="btn-stem btn-primary mission-primary" data-action="accept-supply-mission">Con hiểu rồi</button>`;
+    } else if (mission.stage === "plan") {
+      content.innerHTML = `
+        <p class="mission-kicker">BƯỚC 1 · NGHĨ TRƯỚC KHI LẮP</p>
+        <h2 id="mission-title">Kế hoạch của con</h2>
+        <label class="mission-field">Con định làm một hệ thống như thế nào?<textarea data-role="mission-plan" maxlength="180" placeholder="Ví dụ: Con sẽ làm một chiếc xe có chỗ đỡ hộp..."></textarea></label>
+        <div class="mission-fields-row">
+          <label class="mission-field">Dự đoán thời gian<select data-role="mission-prediction"><option value="20">Khoảng 20 giây</option><option value="30" selected>Khoảng 30 giây</option><option value="45">Khoảng 45 giây</option><option value="60">Khoảng 60 giây</option></select></label>
+          <label class="mission-field">Điều dễ gặp nhất<select data-role="mission-risk"><option value="drop">Hộp có thể rơi</option><option value="flood">Hộp có thể chạm nước</option><option value="stuck">Xe có thể mắc kẹt</option><option value="time">Xe có thể đi chậm</option></select></label>
+        </div>
+        <p class="mission-error" data-role="mission-error" aria-live="polite"></p>
+        <button class="btn-stem btn-primary mission-primary" data-action="save-supply-plan">Bắt đầu lắp</button>`;
+    } else if (mission.stage === "build-v1" || mission.stage === "build-v2") {
+      const version = mission.stage === "build-v1" ? 1 : 2;
+      content.innerHTML = `
+        <p class="mission-kicker">VERSION ${String(version)}</p>
+        <h2 id="mission-title">${version === 1 ? "Lắp ý tưởng đầu tiên" : "Chỉ đổi một điều"}</h2>
+        <p class="mission-lead">${version === 1 ? "Khi sẵn sàng, đặt xe dưới Supply Pod rồi bấm Chơi." : `Biến đang kiểm tra: <strong>${this.escapeHtml(mission.variableChanged ?? "một thay đổi")}</strong>. Sửa xe rồi test lại.`}</p>
+        <button class="btn-stem btn-primary mission-primary" data-action="close-supply-mission">Về xưởng</button>`;
+    } else if (mission.stage === "review-v1") {
+      const first = mission.attempts[0];
+      content.innerHTML = `
+        <p class="mission-kicker">VERSION 1 · KẾT QUẢ</p>
+        <h2 id="mission-title">Mình đã có bằng chứng</h2>
+        ${this.attemptSummary(first)}
+        <label class="mission-field">Version 2 sẽ đổi một điều gì?<select data-role="mission-variable"><option value="Vị trí đỡ Supply Pod">Vị trí đỡ Supply Pod</option><option value="Chiều rộng khung xe">Chiều rộng khung xe</option><option value="Chiều dài khung xe">Chiều dài khung xe</option><option value="Số bánh xe">Số bánh xe</option><option value="Loại bánh hoặc băng xích">Loại bánh hoặc băng xích</option><option value="Vị trí động cơ">Vị trí động cơ</option></select></label>
+        <label class="mission-field">Vì sao con chọn thay đổi này?<textarea data-role="mission-reason" maxlength="160" placeholder="Con nghĩ thay đổi này sẽ giúp..."></textarea></label>
+        <p class="mission-error" data-role="mission-error" aria-live="polite"></p>
+        <button class="btn-stem btn-primary mission-primary" data-action="save-supply-variable">Sửa Version 2</button>`;
+    } else if (mission.stage === "reflection") {
+      const first = mission.attempts[0];
+      const second = mission.attempts[1];
+      content.innerHTML = `
+        <p class="mission-kicker">SO SÁNH V1 ↔ V2</p>
+        <h2 id="mission-title">Điều gì tạo ra khác biệt?</h2>
+        <div class="attempt-comparison">${this.attemptSummary(first)}${this.attemptSummary(second)}</div>
+        <p class="tradeoff-copy">${this.tradeoffCopy(first, second)}</p>
+        <label class="mission-field">Kết quả nào chứng minh điều đó?<textarea data-role="mission-reflection" maxlength="220" placeholder="Con đã đổi... Kết quả cho thấy..."></textarea></label>
+        <label class="mission-check mission-adult-check"><input type="checkbox" data-role="mission-adult-help" /> Có người lớn giúp con sửa sản phẩm trong lần này.</label>
+        <p class="mission-error" data-role="mission-error" aria-live="polite"></p>
+        <button class="btn-stem btn-primary mission-primary" data-action="save-supply-reflection">Hoàn thành</button>`;
+    } else {
+      const first = mission.attempts[0];
+      const second = mission.attempts[1];
+      content.innerHTML = `
+        <p class="mission-kicker">BÁO CÁO KỸ SƯ NHÍ</p>
+        <h2 id="mission-title">Con đã thử nghiệm có kiểm soát</h2>
+        <p class="mission-lead">Con thay đổi <strong>${this.escapeHtml(mission.variableChanged ?? "một biến")}</strong> và dùng kết quả hai lần test để kiểm tra ý tưởng.</p>
+        <div class="attempt-comparison">${this.attemptSummary(first)}${this.attemptSummary(second)}</div>
+        <blockquote class="reflection-quote">“${this.escapeHtml(mission.reflection ?? "Con đã quan sát và cải tiến thiết kế.")}”</blockquote>
+        <section class="parent-evidence"><b>Dành cho phụ huynh</b><p><strong>Kỹ năng:</strong> Thử nghiệm có kiểm soát.</p><p><strong>Bằng chứng:</strong> Con thay đổi ${this.escapeHtml(mission.variableChanged ?? "một biến")}; quãng đường ${String(first?.distanceCm ?? 0)}cm → ${String(second?.distanceCm ?? 0)}cm.</p><p><strong>Mức hỗ trợ:</strong> Gợi ý cao nhất Level ${String(mission.highestHintTier)}/5; ${mission.adultHelp ? "có người lớn hỗ trợ" : "không ghi nhận người lớn can thiệp"}.</p></section>
+        <button class="btn-stem btn-primary mission-primary" data-action="close-supply-mission">Về xưởng</button>`;
+    }
+  }
+
+  private attemptSummary(attempt: NonNullable<AppViewModel["supplyMission"]>["attempts"][number] | undefined): string {
+    if (attempt === undefined) return "";
+    return `<article class="attempt-card"><b>Version ${String(attempt.version)}</b><span>${attempt.completed ? "✓ Tới nơi" : "Chưa tới nơi"}</span><dl><div><dt>Quãng đường</dt><dd>${String(attempt.distanceCm)}cm</dd></div><div><dt>Thời gian</dt><dd>${attempt.elapsedSeconds.toFixed(1)}s</dd></div><div><dt>Supply Pod</dt><dd>${attempt.touchedFlood ? "Chạm nước" : attempt.stable ? "Ổn định" : "Bị nghiêng"}</dd></div><div><dt>Linh kiện</dt><dd>${String(attempt.partCount)}</dd></div></dl></article>`;
+  }
+
+  private tradeoffCopy(first: NonNullable<AppViewModel["supplyMission"]>["attempts"][number] | undefined, second: NonNullable<AppViewModel["supplyMission"]>["attempts"][number] | undefined): string {
+    if (first === undefined || second === undefined) return "Hai lần test cho con hai bằng chứng khác nhau.";
+    const distanceChange = second.distanceCm - first.distanceCm;
+    const timeChange = second.elapsedSeconds - first.elapsedSeconds;
+    const distance = distanceChange === 0 ? "quãng đường không đổi" : `đi ${String(Math.abs(distanceChange))}cm ${distanceChange > 0 ? "xa hơn" : "ngắn hơn"}`;
+    const time = Math.abs(timeChange) < 0.1 ? "thời gian gần như giữ nguyên" : `${Math.abs(timeChange).toFixed(1)} giây ${timeChange > 0 ? "chậm hơn" : "nhanh hơn"}`;
+    return `Version 2 ${distance} và ${time}. Đây là sự đánh đổi, không phải mọi chỉ số đều tốt hơn.`;
+  }
+
+  private escapeHtml(value: string): string {
+    return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
   }
 
   private element(role: string): HTMLElement {

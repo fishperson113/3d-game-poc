@@ -39,6 +39,8 @@ export interface ChallengeDefinition {
   readonly icon: string;
   readonly environment: SimulationEnvironment;
   readonly targetTimeSeconds: number;
+  readonly maxTimeSeconds?: number;
+  readonly targetHalfExtents?: Vector3Tuple;
   readonly failThresholdY?: number;
   readonly recommendedSampleId?: string;
   readonly unlockReward?: string;

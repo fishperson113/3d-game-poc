@@ -6,6 +6,7 @@ import { KeyboardInputSource, RapierPhysicsWorld } from "../adapters";
 import { AppView, type AppViewModel } from "./ui/app-view";
 import type { ApplicationComposition } from "./composition-root";
 import type { RuntimeState } from "../kernel/runtime-contract";
+import type { TransformSnapshot } from "../kernel/math";
 import { STEM_CHALLENGES, RealtimeChallengeEvaluator, type ChallengeDefinition, type ChallengeProgress } from "../challenge";
 import { soundEffects } from "./audio/sound-effects";
 import { AICompanionService, AITutorWidget, DigitalToPhysicalModal } from "../ai";
@@ -16,6 +17,37 @@ interface PlacementState {
   readonly candidates: readonly AssemblyPlacementCandidate[];
   readonly candidateIndex: number;
   readonly rotationSteps: number;
+}
+
+interface SupplyAttempt {
+  readonly version: 1 | 2;
+  readonly completed: boolean;
+  readonly elapsedSeconds: number;
+  readonly distanceCm: number;
+  readonly stable: boolean;
+  readonly touchedFlood: boolean;
+  readonly partCount: number;
+}
+
+interface SupplyMissionState {
+  stage: "briefing" | "plan" | "build-v1" | "review-v1" | "build-v2" | "reflection" | "report";
+  showModal: boolean;
+  attempts: SupplyAttempt[];
+  plan?: string;
+  predictionSeconds?: number;
+  risk?: string;
+  variableChanged?: string;
+  variableReason?: string;
+  reflection?: string;
+  adultHelp?: boolean;
+}
+
+interface ActiveSupplyAttempt {
+  readonly version: 1 | 2;
+  maxDistanceCm: number;
+  elapsedSeconds: number;
+  stable: boolean;
+  touchedFlood: boolean;
 }
 
 export class SandboxApplication {
@@ -49,6 +81,8 @@ export class SandboxApplication {
   private showWelcomeModal = true;
   private showChallengeModal = false;
   private showAdvancedPanel = false;
+  private supplyMission: SupplyMissionState = { stage: "briefing", showModal: false, attempts: [] };
+  private activeSupplyAttempt: ActiveSupplyAttempt | undefined;
 
   // AI Companion & Digital-to-Physical bridge
   private readonly aiService: AICompanionService;
@@ -193,8 +227,57 @@ export class SandboxApplication {
       soundEffects.playClick();
       const mobileOverlay = this.host.querySelector<HTMLElement>("[data-role=mobile-fallback]");
       if (mobileOverlay) mobileOverlay.style.display = "none";
+    } else if (action === "open-supply-mission") {
+      this.supplyMission.showModal = true;
+      this.refreshView();
+    } else if (action === "close-supply-mission") {
+      this.supplyMission.showModal = false;
+      this.refreshView();
+    } else if (action === "accept-supply-mission") {
+      const understood = this.view.getElement("supply-mission-modal").querySelector<HTMLInputElement>('[data-role="mission-understood"]');
+      if (understood?.checked !== true) { this.setMissionError("Đánh dấu ô xác nhận trước nhé."); return; }
+      this.supplyMission.stage = "plan";
+      this.refreshView();
+    } else if (action === "save-supply-plan") {
+      const plan = this.missionField("mission-plan");
+      if (plan.length < 8) { this.setMissionError("Viết một câu ngắn về ý tưởng của con nhé."); return; }
+      this.supplyMission.plan = plan;
+      this.supplyMission.predictionSeconds = Number(this.missionField("mission-prediction"));
+      this.supplyMission.risk = this.missionField("mission-risk");
+      this.supplyMission.stage = "build-v1";
+      this.supplyMission.showModal = false;
+      this.saveSupplyMission();
+      this.refreshView();
+    } else if (action === "save-supply-variable") {
+      const reason = this.missionField("mission-reason");
+      if (reason.length < 8) { this.setMissionError("Nói ngắn gọn vì sao con chọn thay đổi này nhé."); return; }
+      this.supplyMission.variableChanged = this.missionField("mission-variable");
+      this.supplyMission.variableReason = reason;
+      this.supplyMission.stage = "build-v2";
+      this.supplyMission.showModal = false;
+      this.saveSupplyMission();
+      this.refreshView();
+    } else if (action === "save-supply-reflection") {
+      const reflection = this.missionField("mission-reflection");
+      if (reflection.length < 12) { this.setMissionError("Dùng kết quả hai lần test để giải thích thêm một chút nhé."); return; }
+      this.supplyMission.reflection = reflection;
+      this.supplyMission.adultHelp = this.view.getElement("supply-mission-modal").querySelector<HTMLInputElement>('[data-role="mission-adult-help"]')?.checked === true;
+      this.supplyMission.stage = "report";
+      this.supplyMission.showModal = true;
+      this.saveSupplyMission();
+      this.refreshView();
     }
   };
+
+  private missionField(role: string): string {
+    const element = this.view.getElement("supply-mission-modal").querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(`[data-role="${role}"]`);
+    return element?.value.trim() ?? "";
+  }
+
+  private setMissionError(message: string): void {
+    const error = this.view.getElement("supply-mission-modal").querySelector<HTMLElement>('[data-role="mission-error"]');
+    if (error !== null) error.textContent = message;
+  }
 
   private readonly onPointerDownDrive = (event: PointerEvent): void => {
     const target = event.target as HTMLElement | null;
@@ -292,8 +375,15 @@ export class SandboxApplication {
             ? rootTransform
             : transforms?.[currentChallenge.environment.payload.id];
           const evaluation = this.evaluator.step(delta, missionTransform?.position);
+          if (this.currentChallengeId === "the-gap" && missionTransform !== undefined) this.updateSupplyAttempt(missionTransform, evaluation.elapsedSeconds);
 
           if (evaluation.status === "completed") {
+            if (this.currentChallengeId === "the-gap") {
+              this.finishSupplyAttempt(true, evaluation.elapsedSeconds);
+              soundEffects.playVictory();
+              void this.stopAndReset();
+              return;
+            }
             soundEffects.playVictory();
             const current = currentChallenge;
             this.aiService.triggerCelebration(current.title);
@@ -312,6 +402,12 @@ export class SandboxApplication {
             void this.stopAndReset();
             return;
           } else if (evaluation.status === "failed") {
+            if (this.currentChallengeId === "the-gap") {
+              this.finishSupplyAttempt(false, evaluation.elapsedSeconds);
+              soundEffects.playBoing();
+              void this.stopAndReset();
+              return;
+            }
             soundEffects.playBoing();
             this.failState = {
               message: evaluation.message ?? "Xe đã bị rơi khỏi đường đua!",
@@ -424,12 +520,20 @@ export class SandboxApplication {
       if (raw) {
         this.challengeProgress = JSON.parse(raw) as Record<string, ChallengeProgress>;
       }
+      const missionRaw = localStorage.getItem("stem_supply_mission");
+      if (missionRaw) this.supplyMission = { ...this.supplyMission, ...(JSON.parse(missionRaw) as SupplyMissionState), showModal: false };
     } catch { /* ignore storage errors */ }
   }
 
   private saveProgress(): void {
     try {
       localStorage.setItem("stem_car_lab_progress", JSON.stringify(this.challengeProgress));
+    } catch { /* ignore storage errors */ }
+  }
+
+  private saveSupplyMission(): void {
+    try {
+      localStorage.setItem("stem_supply_mission", JSON.stringify({ ...this.supplyMission, showModal: false }));
     } catch { /* ignore storage errors */ }
   }
 
@@ -478,7 +582,13 @@ export class SandboxApplication {
     const challenge = this.getCurrentChallenge();
     this.evaluator = new RealtimeChallengeEvaluator(challenge);
     this.renderer.setEnvironment(challenge.environment);
-    if (this.blueprint.parts.length === 0) {
+    if (challengeId === "the-gap" && this.supplyMission.attempts.length === 0 && (this.supplyMission.stage === "briefing" || this.supplyMission.stage === "plan")) {
+      const blank: MachineBlueprint = { ...this.blueprint, version: this.blueprint.version + 1, parts: [], connections: [], controlBindings: [] };
+      const replaced = await this.composition.building.replace("sandbox-machine", blank);
+      if (!replaced.ok) throw new Error(replaced.error.code);
+      this.blueprint = replaced.value;
+      this.supplyMission.showModal = true;
+    } else if (this.blueprint.parts.length === 0 && challenge.environment.payload === undefined) {
       await this.loadSample();
     }
     this.renderer.setBlueprint(this.blueprint, this.composition.catalog, this.variants);
@@ -627,7 +737,13 @@ export class SandboxApplication {
   private async start(): Promise<void> {
     if (this.state !== "Building") return;
     if (!this.rendererReady) { this.reject("renderer.webgl-context-unavailable"); return; }
+    if (this.currentChallengeId === "the-gap" && (this.supplyMission.stage === "briefing" || this.supplyMission.stage === "plan" || this.supplyMission.stage === "review-v1" || this.supplyMission.stage === "reflection" || this.supplyMission.stage === "report")) {
+      this.supplyMission.showModal = true;
+      this.refreshView();
+      return;
+    }
     if (this.blueprint.parts.length === 0) {
+      if (this.currentChallengeId === "the-gap") { this.reject("Hãy lắp một phương tiện trước khi bắt đầu test."); return; }
       await this.loadSample();
     }
     this.state = "Compiling";
@@ -655,6 +771,15 @@ export class SandboxApplication {
       this.session.start();
       this.evaluator.reset();
       this.evaluator.start();
+      if (this.currentChallengeId === "the-gap") {
+        this.activeSupplyAttempt = {
+          version: this.supplyMission.stage === "build-v2" ? 2 : 1,
+          maxDistanceCm: 0,
+          elapsedSeconds: 0,
+          stable: true,
+          touchedFlood: false,
+        };
+      }
       this.aiService.recordAttemptStart(this.currentChallengeId);
       this.lastRootPos = undefined;
       this.updatePhysicsDiagnostics();
@@ -664,7 +789,10 @@ export class SandboxApplication {
       const driveActuators = compiled.value.specification.actuators.filter((actuator) => actuator.action === "drive").length;
       const steeringActuators = compiled.value.specification.actuators.filter((actuator) => actuator.action === "steer").length;
       const controlMessage = `${hasDrive ? "Tiến/Lùi bằng W/S hoặc phím Mũi Tên" : "Chưa có bánh dẫn động"} · ${hasSteer ? "Rẽ Trái/Phải bằng A/D" : "Chưa có khớp bẻ lái"}`;
-      this.feedback = { tone: "good", message: `Đang lái! ${controlMessage}. Hãy đưa xe về vạch đích vàng!` };
+      const missionGoal = this.currentChallengeId === "the-gap"
+        ? "Đỡ chắc Supply Pod và đưa hộp vào Khu cứu hộ!"
+        : "Hãy đưa xe về vạch đích vàng!";
+      this.feedback = { tone: "good", message: `Đang lái! ${controlMessage}. ${missionGoal}` };
       this.composition.emit("simulation.started", { blueprintVersion: snapshot.value.version, bodies: compiled.value.specification.bodies.length, joints: compiled.value.specification.joints.length, actuators: compiled.value.specification.actuators.length, driveActuators, steeringActuators });
       this.refreshView();
     } catch (error) {
@@ -673,8 +801,45 @@ export class SandboxApplication {
     }
   }
 
+  private updateSupplyAttempt(transform: TransformSnapshot, elapsedSeconds: number): void {
+    const attempt = this.activeSupplyAttempt;
+    const challenge = this.getCurrentChallenge();
+    if (attempt === undefined || challenge.environment.payload === undefined) return;
+    const startZ = challenge.environment.payload.position[2];
+    const goalZ = challenge.environment.goalZone?.position[2] ?? startZ + 1;
+    const progress = Math.max(0, Math.min(1, (transform.position[2] - startZ) / Math.max(0.001, goalZ - startZ)));
+    attempt.maxDistanceCm = Math.max(attempt.maxDistanceCm, progress * 50);
+    attempt.elapsedSeconds = elapsedSeconds;
+    attempt.touchedFlood ||= transform.position[1] < 0;
+    attempt.stable &&= Math.hypot(transform.rotation[0], transform.rotation[2]) < 0.38;
+  }
+
+  private finishSupplyAttempt(completed: boolean, elapsedSeconds: number): void {
+    const active = this.activeSupplyAttempt;
+    if (active === undefined) return;
+    const result: SupplyAttempt = {
+      version: active.version,
+      completed,
+      elapsedSeconds: Math.max(0.1, elapsedSeconds || active.elapsedSeconds),
+      distanceCm: completed ? 50 : Math.round(active.maxDistanceCm),
+      stable: active.stable,
+      touchedFlood: active.touchedFlood,
+      partCount: this.blueprint.parts.length,
+    };
+    this.supplyMission.attempts = [...this.supplyMission.attempts.filter((item) => item.version !== result.version), result].sort((a, b) => a.version - b.version);
+    this.supplyMission.stage = result.version === 1 ? "review-v1" : "reflection";
+    this.supplyMission.showModal = true;
+    this.activeSupplyAttempt = undefined;
+    if (result.version === 2 && result.completed) {
+      this.challengeProgress["the-gap"] = { completed: true, stars: result.elapsedSeconds <= 60 ? 3 : 1, bestTimeSeconds: result.elapsedSeconds };
+      this.saveProgress();
+    }
+    this.saveSupplyMission();
+  }
+
   private async stopAndReset(): Promise<void> {
     try {
+      if (this.state === "Running" && this.activeSupplyAttempt !== undefined) this.finishSupplyAttempt(false, this.activeSupplyAttempt.elapsedSeconds);
       await this.cleanupSimulation();
       this.renderer.setEnvironment(this.getCurrentChallenge().environment);
       await this.syncBlueprint();
@@ -885,6 +1050,7 @@ export class SandboxApplication {
       showWelcomeModal: this.showWelcomeModal,
       showChallengeModal: this.showChallengeModal,
       showAdvancedPanel: this.showAdvancedPanel,
+      ...(this.currentChallengeId === "the-gap" ? { supplyMission: { ...this.supplyMission, highestHintTier: this.aiService.getState().highestTierUnlocked } } : {}),
     });
     this.host.dataset.blueprintJson = JSON.stringify(this.blueprint);
     this.host.dataset.activeRafOwners = this.rafId === undefined ? "0" : "1";
@@ -897,6 +1063,13 @@ export class SandboxApplication {
   }
 
   private getAssemblyGuide(): readonly string[] {
+    if (this.currentChallengeId === "the-gap") {
+      return [
+        "Tạo một hệ thống có thể đỡ Supply Pod khi hộp rơi xuống.",
+        "Tự chọn cách lắp; xưởng sẽ không đưa mô hình mẫu.",
+        "Khi sẵn sàng, đặt xe dưới hộp và bấm Chơi.",
+      ];
+    }
     const hinges = this.blueprint.parts.filter((part) => part.definitionId === "core.steering-hinge").length;
     const wheels = this.blueprint.parts.filter((part) => part.definitionId === "core.powered-wheel" || part.definitionId === "core.crawler-track" || part.definitionId === "core.drive-gear").length;
     const current = this.placement?.candidates[this.placement.candidateIndex];

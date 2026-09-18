@@ -39,6 +39,17 @@ export class RealtimeChallengeEvaluator {
 
     this.elapsedSeconds += deltaSeconds;
 
+    if (this.challenge.maxTimeSeconds !== undefined && this.elapsedSeconds >= this.challenge.maxTimeSeconds) {
+      this.status = "failed";
+      return {
+        status: "failed",
+        distanceToGoal: 999,
+        elapsedSeconds: this.elapsedSeconds,
+        stars: 0,
+        message: "Hết 60 giây. Mình xem lại kết quả rồi thử Version tiếp theo nhé.",
+      };
+    }
+
     const failThresholdY = this.challenge.failThresholdY ?? -2.2;
     if (rootPosition[1] < failThresholdY) {
       this.status = "failed";
@@ -67,11 +78,12 @@ export class RealtimeChallengeEvaluator {
 
     const halfW = goal.size[0] / 2;
     const halfL = goal.size[2] / 2;
+    const targetHalfExtents = this.challenge.targetHalfExtents ?? [0, 0, 0];
 
     const inGoalZone =
-      Math.abs(dx) <= halfW &&
-      Math.abs(dz) <= halfL &&
-      Math.abs(rootPosition[1] - goal.position[1]) <= 1.8;
+      Math.abs(dx) + targetHalfExtents[0] <= halfW &&
+      Math.abs(dz) + targetHalfExtents[2] <= halfL &&
+      Math.abs(rootPosition[1] - goal.position[1]) + targetHalfExtents[1] <= 1.8;
 
     if (inGoalZone) {
       this.status = "completed";
