@@ -196,7 +196,9 @@ app.post("/api/products", asyncRoute(async (request, response) => {
   response.status(201).json({ id });
 }));
 
-app.get("/api/health", (_request, response) => { response.json({ ok: true }); });
+app.get("/api/health", (_request, response) => {
+  response.json({ ok: true, commit: process.env.RENDER_GIT_COMMIT?.slice(0, 7) ?? "local" });
+});
 app.use(express.static("dist", { index: false }));
 app.get("*splat", (_request, response) => { response.sendFile("index.html", { root: "dist" }); });
 app.use((error: unknown, _request: Request, response: Response, _next: NextFunction) => {
