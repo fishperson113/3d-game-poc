@@ -121,17 +121,22 @@ export class AppView {
               <div data-role="assembly-guide"></div>
             </details>
 
-            <details class="inspector-section">
-              <summary><span>🔍 Khối đang chọn</span><span class="micro" data-role="selection-label">Chưa chọn</span></summary>
-              <div data-role="inspector" class="inspector empty">Chạm vào một khối trên xe.</div>
-            </details>
-
             <div class="feedback" data-role="feedback" aria-live="polite">Sẵn sàng chế tạo xe!</div>
           </aside>
 
           <!-- Khung nhìn 3D chính -->
           <main class="viewport-panel">
             <div class="viewport" data-role="viewport"></div>
+
+            <aside class="selection-popover" data-role="selection-popover" aria-live="polite" hidden>
+              <div class="selection-popover-copy">
+                <span>Đang chọn</span>
+                <strong data-role="selection-name">Khối</strong>
+              </div>
+              <button data-action="rotate-selected" class="selection-action" title="Xoay khối 90 độ">↻ Xoay</button>
+              <button data-action="delete-selected" class="selection-delete" title="Gỡ khối khỏi xe">🗑 Gỡ khối</button>
+              <button data-action="clear-selection" class="selection-close" aria-label="Bỏ chọn khối" title="Bỏ chọn">✕</button>
+            </aside>
 
             <!-- Điều khiển hướng dẫn đặt khối -->
             <div class="viewport-overlay">
@@ -341,32 +346,13 @@ export class AppView {
     this.element("rank-badge").textContent = totalStars >= 12 ? "👑 Cao thủ" : totalStars >= 6 ? "🔧 Khéo tay" : "🔰 Kỹ sư nhí";
     (this.root.querySelector("[data-action=toggle-sound]") as HTMLElement).textContent = model.soundMuted ? "🔇" : "🔊";
 
-    // Inspector
+    // Direct selection actions in the 3D viewport.
     const selection = model.selectedPartId === undefined ? undefined : model.blueprint.parts.find((part) => String(part.id) === model.selectedPartId);
-    this.element("selection-label").textContent = selection === undefined ? "Chưa chọn" : String(selection.id);
-    const inspector = this.element("inspector");
-    if (selection === undefined) {
-      inspector.className = "inspector empty";
-      inspector.textContent = "Chạm vào một khối trên xe để xem.";
-    } else {
-      inspector.className = "inspector";
-      const partName = palette.find(([id]) => id === selection.definitionId)?.[1] ?? selection.definitionId;
-      const config = Object.entries(selection.configuration ?? {}).map(([key, value]) => `<div class="inspector-row"><span>${key}</span><code>${JSON.stringify(value)}</code></div>`).join("");
-      const links = model.blueprint.connections.filter((c) => String(c.a.partId) === String(selection.id) || String(c.b.partId) === String(selection.id)).map((c) => {
-        const otherId = String(c.a.partId) === String(selection.id) ? String(c.b.partId) : String(c.a.partId);
-        return `<div class="connection-row"><span>Gắn với: <b>${otherId}</b></span><button data-action="disconnect" data-connection-id="${String(c.id)}" title="Tháo rời khớp nối này">Tháo Khớp</button></div>`;
-      }).join("");
-      inspector.innerHTML = `
-        <div class="part-id">${partName} <small style="color:var(--text-dim);font-size:11px;">(#${String(selection.id)})</small></div>
-        <div class="inspector-row"><span>Vị trí</span><code>${selection.transform.position.map((v) => v.toFixed(2)).join(" ")}</code></div>
-        ${config || "<div class=inspector-note>Thông số mặc định</div>"}
-        <div class="inspector-subheading">Điểm nối</div>
-        ${links || "<div class=inspector-note>Chưa nối với khối khác</div>"}
-        <div class="inspector-actions">
-          <button data-action="rotate-selected" title="Xoay khối">↻ Xoay</button>
-          <button data-action="delete-selected" class="danger-button primary-delete-btn" title="Tháo khối khỏi xe">Tháo ra</button>
-        </div>`;
-    }
+    const selectionPopover = this.element("selection-popover");
+    const showSelection = selection !== undefined && model.state === "Building";
+    selectionPopover.hidden = !showSelection;
+    selectionPopover.classList.toggle("is-visible", showSelection);
+    if (selection !== undefined) this.element("selection-name").textContent = palette.find(([id]) => id === selection.definitionId)?.[1] ?? selection.definitionId;
 
     // Mode and Placement UI
     const modeLabel = this.element("mode-label");

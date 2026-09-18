@@ -150,6 +150,11 @@ export class SandboxApplication {
     } else if (action === "delete-selected") {
       soundEffects.playClick();
       void this.deleteSelected();
+    } else if (action === "clear-selection") {
+      soundEffects.playClick();
+      this.selectedPartId = undefined;
+      this.renderer.setSelection(undefined);
+      this.refreshView();
     } else if (action === "disconnect") {
       soundEffects.playClick();
       void this.disconnect(actionElement.dataset.connectionId);

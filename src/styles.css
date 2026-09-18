@@ -515,26 +515,6 @@ button:disabled { cursor: not-allowed; opacity: 0.38; }
   margin-top: 0.15rem;
 }
 
-.inspector-section {
-  margin-top: 0.7rem;
-  border: 1px solid #334155;
-  border-radius: 8px;
-  background: #0f172a;
-}
-.inspector-section > summary {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.65rem 0.75rem;
-  color: #e2e8f0;
-  cursor: pointer;
-  font-size: 0.75rem;
-  font-weight: 800;
-  list-style: none;
-}
-.inspector-section > summary::-webkit-details-marker { display: none; }
-.inspector-section .inspector { border: 0; border-top: 1px solid #334155; border-radius: 0 0 8px 8px; }
-
 /* Supply mission: one focused step at a time. */
 .mission-modal { z-index: 1400; }
 .mission-card {
@@ -739,6 +719,43 @@ button:disabled { cursor: not-allowed; opacity: 0.38; }
 }
 .viewport { position: absolute; inset: 0; }
 .viewport-canvas { display: block; width: 100%; height: 100%; outline: none; }
+
+.selection-popover {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  z-index: 24;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  max-width: calc(100% - 2rem);
+  padding: 0.45rem;
+  border: 1px solid rgba(255, 77, 87, 0.72);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.94);
+  box-shadow: 0 12px 30px rgba(56, 12, 18, 0.34), inset 0 1px rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -0.5rem) scale(0.98);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+.selection-popover.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, 0) scale(1);
+}
+.selection-popover-copy { min-width: 6.5rem; padding: 0.15rem 0.45rem; }
+.selection-popover-copy span { display: block; color: #fda4af; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.selection-popover-copy strong { display: block; overflow: hidden; color: #f8fafc; font-size: 0.82rem; text-overflow: ellipsis; white-space: nowrap; }
+.selection-popover button { min-height: 2.25rem; padding: 0.45rem 0.65rem; border-radius: 8px; font-size: 0.74rem; font-weight: 800; transition: transform 150ms ease, background 150ms ease, border-color 150ms ease; }
+.selection-popover button:hover { transform: translateY(-1px); }
+.selection-popover button:active { transform: translateY(1px) scale(0.98); }
+.selection-popover button:focus-visible { outline: 2px solid #f8fafc; outline-offset: 2px; }
+.selection-action { color: #e2e8f0; border-color: #475569; background: #1e293b; }
+.selection-delete { color: #fff1f2; border-color: #e11d48; background: #be123c; }
+.selection-delete:hover { background: #e11d48; }
+.selection-close { width: 2.25rem; padding-inline: 0 !important; color: #cbd5e1; border-color: transparent; background: transparent; }
 
 .viewport-overlay {
   position: absolute;

@@ -52,6 +52,7 @@ export class ThreeSimulationRenderer implements SimulationRenderer {
   private ghostRoot: THREE.Group | undefined;
   private payloadVisual: PartVisualInstance | undefined;
   private payloadId: string | undefined;
+  private selectionHighlight: THREE.BoxHelper | undefined;
   private disposed = false;
   private theta = 2.79;
   private phi = 0.52;
@@ -304,7 +305,21 @@ export class ThreeSimulationRenderer implements SimulationRenderer {
   }
 
   public setSelection(partId: string | undefined): void {
+    this.clearSelectionHighlight();
     for (const [id, root] of this.partRoots) root.traverse((object) => { object.userData.selected = id === partId; });
+    if (partId === undefined) { this.paint(); return; }
+    const root = this.partRoots.get(partId);
+    if (root === undefined) { this.paint(); return; }
+    root.updateWorldMatrix(true, true);
+    const highlight = new THREE.BoxHelper(root, 0xff4d57);
+    const material = highlight.material;
+    material.depthTest = false;
+    material.transparent = true;
+    material.opacity = 0.95;
+    highlight.renderOrder = 100;
+    this.selectionHighlight = highlight;
+    this.scene.add(highlight);
+    this.paint();
   }
 
   public setGhost(ghost: GhostPlacement | undefined): void {
@@ -421,6 +436,7 @@ export class ThreeSimulationRenderer implements SimulationRenderer {
   }
 
   private clearPartVisuals(): void {
+    this.clearSelectionHighlight();
     for (const visual of this.visuals.values()) {
       this.buildRoot.remove(visual.root);
       visual.dispose();
@@ -428,6 +444,14 @@ export class ThreeSimulationRenderer implements SimulationRenderer {
     this.visuals.clear();
     this.partRoots.clear();
     this.socketMarkers.clear();
+  }
+
+  private clearSelectionHighlight(): void {
+    if (this.selectionHighlight === undefined) return;
+    this.scene.remove(this.selectionHighlight);
+    this.selectionHighlight.geometry.dispose();
+    (this.selectionHighlight.material as THREE.Material).dispose();
+    this.selectionHighlight = undefined;
   }
 
   private clearPayloadVisual(): void {
