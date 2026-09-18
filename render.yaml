@@ -8,7 +8,7 @@ services:
     healthCheckPath: /api/health
     envVars:
       - key: BETTER_AUTH_URL
-        value: https://besiege-lite-web-poc.onrender.com
+        value: https://besiege-lite-web-poc-g5lw.onrender.com
       - key: BETTER_AUTH_SECRET
         generateValue: true
       - key: DATABASE_URL
