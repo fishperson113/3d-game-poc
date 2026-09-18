@@ -13,3 +13,4 @@ storage/
 # img2threejs can create large transient artifacts. Keep reviewed evidence explicitly.
 work/img2threejs/**
 !work/img2threejs/.gitkeep
+.neon

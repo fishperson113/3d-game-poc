@@ -20,5 +20,5 @@
     "skipLibCheck": true,
     "types": ["vite/client", "vitest/globals", "node"]
   },
-  "include": ["src", "server", "tests", "vite.config.ts", "playwright.config.ts"]
+  "include": ["src", "server", "tests", "vite.config.ts", "playwright.config.ts", "neon.ts"]
 }
