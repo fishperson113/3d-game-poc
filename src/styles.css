@@ -108,7 +108,7 @@ body {
 .account-dock {
   position: fixed;
   z-index: 3000;
-  right: 1rem;
+  left: 1rem;
   bottom: 1rem;
   display: flex;
   align-items: center;
