@@ -1,5 +1,9 @@
 # Implementation plans
 
+## BA traceability
+
+- [Supply Pod challenge và hệ thống hiện tại](./06-ba-supply-pod-challenge-traceability.md): đối chiếu từng thuật ngữ, yêu cầu và userflow của BA với UI, domain model và runtime đang có; phân biệt rõ đã có, tương đương, một phần và chưa có.
+
 **Điều chỉnh ngày 2026-09-09:** user chọn triển khai [Plan 04 mở rộng](./04-part-asset-pipeline-detailed-implementation.md) trước Plan 03, gồm asset pipeline và sandbox lắp ráp/lái xe với visual thay được. Plan 04 nhận phần runtime/editor cần thiết từ Plan 05; Challenge để sau. Bảng Wave bên dưới là baseline ban đầu, không phải prerequisite ngăn chặng sandbox này.
 
 Các plan dưới đây được viết để một coding session có thể nhận **một file**, triển khai và kiểm thử mà không cần mở rộng phạm vi. Baseline ở repository root là contract chung; không plan nào được tự ý đổi contract chung để tiện cho implementation cục bộ.
