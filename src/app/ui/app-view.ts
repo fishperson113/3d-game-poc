@@ -31,14 +31,14 @@ export interface AppViewModel {
 }
 
 export const palette = [
-  ["core.structural-block", "Khung Cơ Bản", "Khung xe tiêu chuẩn 6 điểm gắn", "swatch-structural-block"],
-  ["core.heavy-beam", "Dầm Khung Dài 🏗️", "Khung dài vượt hố sâu The Gap", "swatch-heavy-beam"],
-  ["core.powered-wheel", "Bánh Động Cơ 🏎️", "Bánh cao su dẫn động W/S", "swatch-powered-wheel"],
-  ["core.crawler-track", "Băng Xích Xe Tăng 🚜", "Xích bám đường siêu đỉnh leo dốc", "swatch-crawler-track"],
-  ["core.steering-hinge", "Khớp Bẻ Lái 🔄", "Khớp xoay điều hướng A/D", "swatch-steering-hinge"],
-  ["core.motor-module", "Động Cơ Siêu Tốc ⚡", "Tăng lực kéo và gia tốc mạnh mẽ", "swatch-motor-module"],
-  ["core.drive-gear", "Bánh Răng Trợ Lực ⚙️", "Bánh răng bám gờ leo tường", "swatch-drive-gear"],
-  ["core.battery-box", "Hộp Pin Trọng Tâm 🔋", "Hạ trọng tâm, chống lật xe", "swatch-battery-box"],
+  ["core.structural-block", "Khung xe", "Khung chính có 6 điểm gắn", "swatch-structural-block"],
+  ["core.heavy-beam", "Dầm dài", "Giúp xe vượt hố", "swatch-heavy-beam"],
+  ["core.powered-wheel", "Bánh xe", "Giúp xe chạy", "swatch-powered-wheel"],
+  ["core.crawler-track", "Băng xích", "Giúp xe leo dốc", "swatch-crawler-track"],
+  ["core.steering-hinge", "Khớp lái", "Giúp xe đổi hướng", "swatch-steering-hinge"],
+  ["core.motor-module", "Động cơ", "Cho xe thêm sức mạnh", "swatch-motor-module"],
+  ["core.drive-gear", "Bánh răng", "Giúp xe bám đường", "swatch-drive-gear"],
+  ["core.battery-box", "Hộp pin", "Giúp xe cân bằng", "swatch-battery-box"],
 ] as const;
 
 export class AppView {
@@ -51,57 +51,61 @@ export class AppView {
           <div class="brand-group">
             <button class="icon-button home-btn" data-action="open-welcome" title="Màn hình chính">🏠</button>
             <div>
-              <p class="eyebrow">STEM CAR LAB · PHÒNG THÍ NGHIỆM CƠ KHÍ</p>
-              <h1 class="game-title">Xưởng Chế Tạo Xe Thông Minh</h1>
+              <p class="eyebrow">XƯỞNG XE STEM</p>
+              <h1 class="game-title">Xưởng xe của bé</h1>
             </div>
           </div>
           <div class="status-cluster">
-            <button class="sound-toggle-btn" data-action="toggle-sound" title="Bật/Tắt Âm thanh">🔊</button>
-            <div class="badge-tag level-badge" data-role="level-badge" data-action="open-challenges" title="Nhấp để đổi màn chơi">🎯 Màn 1: Trường Tập Lái</div>
             <div class="badge-tag star-badge" data-role="star-count">⭐ 0/18</div>
-            <div class="badge-tag rank-badge" data-role="rank-badge">🔰 Kỹ Sư Nhí</div>
+            <div class="badge-tag rank-badge" data-role="rank-badge">Kỹ sư nhí</div>
             <span class="status-dot"></span>
             <span data-role="runtime-state" class="state-text">Lắp ráp</span>
           </div>
         </header>
 
         <div class="toolbar" data-role="toolbar">
-          <button data-action="start" class="btn-stem btn-start" title="Bắt đầu lái thử chiếc xe bạn vừa chế tạo!">🎮 Lái Thử</button>
-          <button data-action="stop" class="btn-stem btn-stop" title="Dừng xe lại để tinh chỉnh tiếp">🛑 Về Xưởng</button>
-          <button data-action="reset" class="btn-stem btn-reset" title="Đưa xe về vị trí xuất phát ban đầu">🔄 Làm Lại</button>
-          <button data-action="retry" class="btn-stem btn-retry">🔁 Thử Lại</button>
-          <div class="toolbar-divider"></div>
-          <button data-action="open-challenges" class="btn-stem btn-challenges" title="Xem danh sách 6 màn chơi">🎯 Chọn Thử Thách</button>
-          <label class="sample-picker" title="Chọn nhanh một chiếc xe lắp sẵn để trải nghiệm">
-            <span>🚗 Xe mẫu:</span>
-            <select data-role="sample-select" data-action="sample-select"></select>
-          </label>
-          <button data-action="sample" class="btn-stem btn-load-sample" title="Nạp ngay xe mẫu đã chọn vào xưởng">📥 Nạp Xe</button>
-          <div class="toolbar-divider"></div>
-          <button data-action="reset-camera" class="btn-stem" title="Đặt lại góc nhìn đẹp từ phía sau xe">🎥 Góc Nhìn Chuẩn</button>
-          <button data-action="toggle-advanced" class="btn-stem btn-advanced" title="Mở bảng thông số chuyên sâu">⚙️ Nâng Cao</button>
-          <span class="toolbar-hint">💡 Mẹo: Bấm chọn phụ tùng ➔ Nhấn <b>Xác nhận gắn</b>. Phím <kbd>R</kbd> để xoay, <kbd>Delete</kbd> để xóa.</span>
+          <button data-action="open-challenges" class="level-chip" data-role="level-badge" title="Chọn màn chơi">🎯 Màn 1</button>
+          <div class="toolbar-spacer"></div>
+          <button data-action="start" class="btn-stem btn-start context-action" title="Cho xe chạy">▶ Chơi</button>
+          <button data-action="stop" class="btn-stem btn-stop context-action" title="Quay lại lắp xe">■ Dừng</button>
+          <button data-action="retry" class="btn-stem btn-retry context-action">↻ Chơi lại</button>
+          <details class="tools-menu">
+            <summary aria-label="Mở thêm công cụ" title="Thêm công cụ">•••</summary>
+            <div class="tools-popover">
+              <p class="tools-title">Thêm công cụ</p>
+              <button data-action="reset" class="btn-stem btn-reset" title="Đưa xe về vạch xuất phát">↻ Làm lại</button>
+              <div class="sample-tools">
+                <label class="sample-picker" title="Chọn một chiếc xe có sẵn">
+                  <span>Xe có sẵn</span>
+                  <select data-role="sample-select" data-action="sample-select"></select>
+                </label>
+                <button data-action="sample" class="btn-stem btn-load-sample" title="Dùng xe đã chọn">Dùng xe</button>
+              </div>
+              <button data-action="reset-camera" class="btn-stem" title="Đưa góc nhìn về vị trí ban đầu">🎥 Góc nhìn</button>
+              <button class="sound-toggle-btn" data-action="toggle-sound" title="Bật hoặc tắt âm thanh">🔊</button>
+              <button data-action="toggle-advanced" class="btn-stem btn-advanced" title="Dành cho người hướng dẫn">⚙️ Người lớn</button>
+            </div>
+          </details>
         </div>
 
         <div class="sandbox-grid">
           <!-- Bảng phụ tùng bên trái -->
           <aside class="panel left-panel">
             <div class="panel-heading">
-              <span>🧩 Hộp Phụ Tùng STEM</span>
+              <span>🧩 Phụ tùng</span>
               <span class="micro" data-role="parts-count">8 món</span>
             </div>
             <div class="palette" data-role="palette"></div>
 
-            <details class="assembly-guide" open>
-              <summary>📋 Hướng Dẫn Chế Tạo Thông Minh</summary>
+            <details class="assembly-guide">
+              <summary>💡 Cách lắp</summary>
               <div data-role="assembly-guide"></div>
             </details>
 
-            <div class="panel-heading inspector-heading">
-              <span>🔍 Chi Tiết Khối Đang Chọn</span>
-              <span class="micro" data-role="selection-label">Chưa chọn</span>
-            </div>
-            <div data-role="inspector" class="inspector empty">Nhấp chuột vào một bộ phận trên xe 3D để xem.</div>
+            <details class="inspector-section">
+              <summary><span>🔍 Khối đang chọn</span><span class="micro" data-role="selection-label">Chưa chọn</span></summary>
+              <div data-role="inspector" class="inspector empty">Chạm vào một khối trên xe.</div>
+            </details>
 
             <div class="feedback" data-role="feedback" aria-live="polite">Sẵn sàng chế tạo xe!</div>
           </aside>
@@ -112,14 +116,14 @@ export class AppView {
 
             <!-- Điều khiển hướng dẫn đặt khối -->
             <div class="viewport-overlay">
-              <span class="mode-label" data-role="mode-label">CHẾ ĐỘ XƯỞNG LẮP RÁP</span>
-              <span class="placement-label" data-role="placement-label">Sẵn sàng đặt khối khung xe.</span>
+              <span class="mode-label" data-role="mode-label">ĐANG LẮP XE</span>
+              <span class="placement-label" data-role="placement-label">Chọn một phụ tùng để bắt đầu.</span>
               <div class="placement-actions" data-role="placement-actions">
-                <button data-action="previous-socket" title="Thử vị trí gắn khác">← Đổi điểm gắn</button>
-                <button data-action="next-socket" title="Thử vị trí gắn kế tiếp">Đổi điểm gắn →</button>
-                <button data-action="rotate-placement" title="Xoay khối 90 độ">Xoay 90° (<kbd>R</kbd>)</button>
-                <button data-action="confirm-placement" class="btn-stem btn-confirm" title="Gắn cố định vào xe">✅ Xác nhận gắn</button>
-                <button data-action="cancel-placement" title="Hủy bỏ">❌ Hủy</button>
+                <button data-action="previous-socket" title="Điểm gắn trước">← Trước</button>
+                <button data-action="next-socket" title="Điểm gắn tiếp theo">Sau →</button>
+                <button data-action="rotate-placement" title="Xoay khối">↻ Xoay</button>
+                <button data-action="confirm-placement" class="btn-stem btn-confirm" title="Gắn vào xe">✓ Gắn</button>
+                <button data-action="cancel-placement" title="Bỏ phụ tùng này">Bỏ</button>
               </div>
             </div>
 
@@ -166,17 +170,17 @@ export class AppView {
         <div class="modal-backdrop welcome-modal" data-role="welcome-modal">
           <div class="modal-card welcome-card">
             <div class="robot-avatar">🤖</div>
-            <h2>Chào Mừng Đến Với STEM Car Lab!</h2>
+            <h2>Sẵn sàng lắp xe chưa?</h2>
             <p class="robot-speech">
-              "Xin chào Nhà Sáng Chế Nhí! Hành tinh STEM đang gặp nhiều địa hình hiểm trở. Hãy cùng Robot Rô-Bô thiết kế những cỗ xe kỳ diệu để vượt qua các vách núi, hố sâu và bậc thang nhé!"
+              Chọn phụ tùng, lắp chiếc xe của riêng mình và cùng Rô-Bô vượt thử thách nhé!
             </p>
             <div class="welcome-features">
-              <div class="feature-item"><span>🧩</span><b>Lắp Ráp Dễ Dàng</b><small>Ghép các khối khung, bánh xe, băng xích và động cơ.</small></div>
-              <div class="feature-item"><span>🎮</span><b>Lái Thử Thời Gian Thực</b><small>Trải nghiệm vật lý 3D chân thực, vượt dốc và rãnh sâu.</small></div>
-              <div class="feature-item"><span>🏆</span><b>6 Thử Thách Kỳ Thú</b><small>Khám phá cách xe dài vượt hố nứt và xe xích leo tường đứng.</small></div>
+              <div class="feature-item"><span>🧩</span><b>Lắp xe</b><small>Chọn và ghép phụ tùng.</small></div>
+              <div class="feature-item"><span>🎮</span><b>Lái xe</b><small>Chạy, rẽ và vượt dốc.</small></div>
+              <div class="feature-item"><span>🏆</span><b>Nhận sao</b><small>Chinh phục 6 màn chơi.</small></div>
             </div>
             <div class="modal-actions">
-              <button class="btn-stem btn-big btn-primary" data-action="close-welcome">BẮT ĐẦU CHẾ TẠO NGAY 🚀</button>
+              <button class="btn-stem btn-big btn-primary" data-action="close-welcome">Vào xưởng 🚀</button>
             </div>
           </div>
         </div>
@@ -185,10 +189,10 @@ export class AppView {
         <div class="modal-backdrop challenge-modal" data-role="challenge-modal" style="display: none;">
           <div class="modal-card challenge-card">
             <div class="modal-header">
-              <h2>🎯 Bản Đồ Thử Thách Địa Hình</h2>
+              <h2>🎯 Chọn màn chơi</h2>
               <button class="close-btn" data-action="close-challenges">✕</button>
             </div>
-            <p class="modal-desc">Chọn một màn chơi để bắt đầu nhiệm vụ khoa học của bạn:</p>
+            <p class="modal-desc">Mình chơi màn nào?</p>
             <div class="challenges-grid" data-role="challenges-grid"></div>
           </div>
         </div>
@@ -198,15 +202,15 @@ export class AppView {
           <div class="modal-card victory-card">
             <div class="victory-header">
               <span class="confetti-icon">🎉</span>
-              <h2>CHIẾN THẮNG XUẤT SẮC!</h2>
+              <h2>Giỏi quá!</h2>
             </div>
             <div class="victory-stars" data-role="victory-stars">⭐⭐⭐</div>
             <p class="victory-message" data-role="victory-message">Xe của bạn đã cán đích thành công!</p>
             <div class="victory-actions">
-              <button class="btn-stem btn-big btn-success" data-action="next-level">MÀN KẾ TIẾP ➡️</button>
-              <button class="btn-stem btn-big btn-primary" data-action="open-build-modal">LẮP RÁP THỰC TẾ 📦</button>
-              <button class="btn-stem btn-big" data-action="close-victory">Ở Lại Xưởng 🛠️</button>
-              <button class="btn-stem btn-big" data-action="retry">Chơi Lại 🔁</button>
+              <button class="btn-stem btn-big btn-success" data-action="next-level">Màn tiếp ➡️</button>
+              <button class="btn-stem btn-big btn-primary" data-action="open-build-modal">Lắp xe thật 📦</button>
+              <button class="btn-stem btn-big" data-action="close-victory">Về xưởng 🛠️</button>
+              <button class="btn-stem btn-big" data-action="retry">Chơi lại 🔁</button>
             </div>
           </div>
         </div>
@@ -216,16 +220,16 @@ export class AppView {
           <div class="modal-card fail-card">
             <div class="fail-header">
               <span class="robot-avatar-small">🤖</span>
-              <h2>Ối! Chưa Qua Được Rồi!</h2>
+              <h2>Thử lại nhé!</h2>
             </div>
             <p class="fail-message" data-role="fail-message">Xe bị lọt hố sâu hoặc lật nhào.</p>
             <div class="stem-tip-box">
-              <strong>💡 Lời khuyên từ Robot Rô-Bô:</strong>
+              <strong>💡 Rô-Bô gợi ý:</strong>
               <p data-role="fail-tip">Thử lắp thêm dầm khung dài để xe bắc cầu qua khe nứt nhé!</p>
             </div>
             <div class="fail-actions">
-              <button class="btn-stem btn-big btn-primary" data-action="close-fail">VỀ XƯỞNG SỬA XE 🔧</button>
-              <button class="btn-stem btn-big" data-action="retry">LÁI THỬ LẠI 🔁</button>
+              <button class="btn-stem btn-big btn-primary" data-action="close-fail">Sửa xe 🔧</button>
+              <button class="btn-stem btn-big" data-action="retry">Chơi lại 🔁</button>
             </div>
           </div>
         </div>
@@ -294,17 +298,18 @@ export class AppView {
 
   public render(model: AppViewModel): void {
     this.root.dataset.runtimeState = model.state;
-    this.element("runtime-state").textContent = model.state === "Building" ? "Lắp ráp" : model.state === "Running" ? "Đang lái" : model.state === "Failed" ? "Sự cố" : model.state;
+    this.element("runtime-state").textContent = model.state === "Building" ? "Lắp xe" : model.state === "Running" ? "Đang chơi" : model.state === "Failed" ? "Thử lại nhé" : model.state;
 
     // Header updates
     const currentChallenge = model.challenges.find((c) => c.id === model.currentChallengeId);
     if (currentChallenge !== undefined) {
-      this.element("level-badge").textContent = `🎯 Màn ${String(currentChallenge.number)}: ${currentChallenge.title}`;
+      this.element("level-badge").textContent = `🎯 Màn ${String(currentChallenge.number)}`;
+      this.element("level-badge").setAttribute("title", currentChallenge.title);
     }
 
     const totalStars = Object.values(model.challengeProgress).reduce((sum, p) => sum + p.stars, 0);
     this.element("star-count").textContent = `⭐ ${String(totalStars)}/18`;
-    this.element("rank-badge").textContent = totalStars >= 12 ? "👑 Bậc Thầy Cơ Khí" : totalStars >= 6 ? "🔧 Thợ Máy Tài Năng" : "🔰 Kỹ Sư Nhí";
+    this.element("rank-badge").textContent = totalStars >= 12 ? "👑 Cao thủ" : totalStars >= 6 ? "🔧 Khéo tay" : "🔰 Kỹ sư nhí";
     (this.root.querySelector("[data-action=toggle-sound]") as HTMLElement).textContent = model.soundMuted ? "🔇" : "🔊";
 
     // Inspector
@@ -313,7 +318,7 @@ export class AppView {
     const inspector = this.element("inspector");
     if (selection === undefined) {
       inspector.className = "inspector empty";
-      inspector.textContent = "Nhấp chuột vào một bộ phận trên xe 3D để xem hoặc tháo module.";
+      inspector.textContent = "Chạm vào một khối trên xe để xem.";
     } else {
       inspector.className = "inspector";
       const partName = palette.find(([id]) => id === selection.definitionId)?.[1] ?? selection.definitionId;
@@ -324,13 +329,13 @@ export class AppView {
       }).join("");
       inspector.innerHTML = `
         <div class="part-id">${partName} <small style="color:var(--text-dim);font-size:11px;">(#${String(selection.id)})</small></div>
-        <div class="inspector-row"><span>Vị trí:</span><code>${selection.transform.position.map((v) => v.toFixed(2)).join(" ")}</code></div>
+        <div class="inspector-row"><span>Vị trí</span><code>${selection.transform.position.map((v) => v.toFixed(2)).join(" ")}</code></div>
         ${config || "<div class=inspector-note>Thông số mặc định</div>"}
-        <div class="inspector-subheading">Khớp liên kết trên xe</div>
-        ${links || "<div class=inspector-note>Khối độc lập</div>"}
+        <div class="inspector-subheading">Điểm nối</div>
+        ${links || "<div class=inspector-note>Chưa nối với khối khác</div>"}
         <div class="inspector-actions">
-          <button data-action="rotate-selected" title="Xoay khối 90 độ">🔄 Xoay 90°</button>
-          <button data-action="delete-selected" class="danger-button primary-delete-btn" title="Gỡ bỏ module này và phụ kiện khỏi xe">🗑️ Tháo Module Khỏi Xe</button>
+          <button data-action="rotate-selected" title="Xoay khối">↻ Xoay</button>
+          <button data-action="delete-selected" class="danger-button primary-delete-btn" title="Tháo khối khỏi xe">Tháo ra</button>
         </div>`;
     }
 
@@ -338,27 +343,25 @@ export class AppView {
     const modeLabel = this.element("mode-label");
     const placementLabel = this.element("placement-label");
     const placement = model.placement;
-    const target = model.placementTarget;
     if (model.state === "Running") {
-      modeLabel.textContent = "🎮 CHẾ ĐỘ LÁI THỬ (DRIVING)";
-      placementLabel.textContent = "Đang lái xe! Dùng phím W / S (Tiến/Lùi), A / D (Trái/Phải) hoặc cụm nút TIẾN, LÙI, TRÁI, PHẢI bên phải màn hình.";
+      modeLabel.textContent = "🎮 ĐANG CHƠI";
+      placementLabel.textContent = "Dùng W A S D hoặc các nút mũi tên để lái.";
       this.element("placement-actions").style.display = "none";
     } else if (model.state === "Failed") {
-      modeLabel.textContent = "⚠️ SỰ CỐ XE";
-      placementLabel.textContent = "Xe gặp sự cố hoặc lật. Bấm 'Thử Lại' hoặc 'Về Xưởng' để căn chỉnh lại xe!";
+      modeLabel.textContent = "⚠️ XE BỊ LẬT";
+      placementLabel.textContent = "Không sao, mình thử lại nhé!";
       this.element("placement-actions").style.display = "none";
     } else {
-      modeLabel.textContent = "🔧 CHẾ ĐỘ XƯỞNG LẮP RÁP";
+      modeLabel.textContent = "🔧 ĐANG LẮP XE";
       if (placement === undefined) {
-        placementLabel.textContent = model.blueprint.parts.length === 0 ? "Sẵn sàng đặt khối móng đầu tiên." : "Chọn linh kiện bên trái để gắn vào xe. Nhấn '🎮 Lái Thử' để bắt đầu lái!";
+        placementLabel.textContent = model.blueprint.parts.length === 0 ? "Chọn khung xe để bắt đầu." : "Chọn phụ tùng, rồi bấm Chơi.";
       } else {
-        const targetStr = `${target?.targetPartId ?? "target"}:${target?.targetSocketId ?? "socket"}`;
         const countStr = `(${String(placement.candidateIndex + 1)}/${String(placement.candidateCount)})`;
         const defName = placement.definitionId.replace(/^core\./, "");
         if (placement.valid) {
-          placementLabel.innerHTML = `<span style="color:#83d68c;font-weight:700">✅ HỢP LỆ</span> ${defName} ➔ ${targetStr} ${countStr}`;
+          placementLabel.innerHTML = `<span style="color:#83d68c;font-weight:700">✓ Gắn được</span> ${defName} · ${countStr}`;
         } else {
-          placementLabel.innerHTML = `<span style="color:#e76f67;font-weight:700">❌ CHƯA HỢP LỆ:</span> ${placement.reason ?? "Không thể gắn tại đây"} ${countStr}`;
+          placementLabel.innerHTML = `<span style="color:#e76f67;font-weight:700">Chưa gắn được</span> · Thử xoay hoặc đổi điểm ${countStr}`;
         }
       }
       this.element("placement-actions").style.display = placement === undefined ? "none" : "flex";
