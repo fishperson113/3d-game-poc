@@ -37,6 +37,26 @@ function drive(blueprint: MachineBlueprint, throttle: number, steering: number) 
 
 describe("controller and physics regressions", () => {
   beforeAll(initializeRapier);
+  it("treats steering input as a no-op when the vehicle has wheels but no steering hinges", () => {
+    const source = createRuntimeSampleFixture(catalog);
+    const removedPartIds = new Set(["hinge-front-left", "hinge-front-right", "wheel-front-left", "wheel-front-right"]);
+    const rearWheelOnly: MachineBlueprint = {
+      ...source,
+      parts: source.parts.filter((part) => !removedPartIds.has(String(part.id))),
+      connections: source.connections.filter((connection) => !removedPartIds.has(String(connection.a.partId)) && !removedPartIds.has(String(connection.b.partId))),
+      controlBindings: source.controlBindings.filter((binding) => !removedPartIds.has(String(binding.partId))),
+    };
+
+    const steeringOnly = drive(rearWheelOnly, 0, 1);
+    expect(Math.hypot(steeringOnly.delta[0], steeringOnly.delta[2])).toBeLessThan(0.02);
+    expect(Math.abs(steeringOnly.yaw)).toBeLessThan(0.01);
+
+    const forwardWithSteeringHeld = drive(rearWheelOnly, 1, 1);
+    expect(forwardWithSteeringHeld.delta[2]).toBeGreaterThan(5);
+    expect(Math.abs(forwardWithSteeringHeld.delta[0])).toBeLessThan(0.15);
+    expect(Math.abs(forwardWithSteeringHeld.yaw)).toBeLessThan(0.03);
+  });
+
   it.each(RUNTIME_SAMPLES)("$id drives straight and obeys both steering directions", (sample) => {
     const blueprint = createRuntimeSampleFixture(catalog, sample.id);
     const straight = drive(blueprint, 1, 0);

@@ -128,24 +128,18 @@ export class RapierPhysicsWorld implements PhysicsWorld {
       if (joint === undefined) continue;
       const revolute = joint as RAPIER.RevoluteImpulseJoint;
       if (actuator.action === "drive") {
-        let driveFactor = this.appliedControls.throttle;
-        if (!hasSteeringActuator && this.appliedControls.steering !== 0) {
-          const body2 = joint.body2();
-          const localX = body2.translation().x;
-          // When turning left (+steering): left wheels (+X) slow down/reverse, right wheels (-X) speed up
-          const steerEffect = localX > 0 ? -this.appliedControls.steering : this.appliedControls.steering;
-          driveFactor = this.appliedControls.throttle !== 0 ? this.appliedControls.throttle + steerEffect * 0.5 : steerEffect * 0.75;
-        }
         const driveDamping = Math.max(25, actuator.maxForce * 0.5);
-        revolute.configureMotorVelocity(driveFactor * actuator.targetSpeed * actuator.motorSign, driveDamping);
-        // Releasing throttle coasts; reverse input actively brakes/reverses.
-        revolute.setMotorMaxForce(this.controls.throttle === 0 && (!hasSteeringActuator && this.controls.steering === 0) ? 0 : actuator.maxForce);
+        revolute.configureMotorVelocity(this.appliedControls.throttle * actuator.targetSpeed * actuator.motorSign, driveDamping);
+        // Keep the existing wheel hold for steering assemblies. A machine
+        // without steering hardware must not route A/D into its drive motors.
+        revolute.setMotorMaxForce(this.controls.throttle === 0 && !hasSteeringActuator ? 0 : actuator.maxForce);
       } else {
         const target = this.appliedControls.steering * actuator.motorSign * (actuator.limitRadians ?? 0.6);
         revolute.configureMotorPosition(target, actuator.steeringStiffness ?? 80, actuator.steeringDamping ?? 8);
         revolute.setMotorMaxForce(actuator.maxForce);
       }
-      if (this.controls.throttle !== 0 || this.controls.steering !== 0) { joint.body1().wakeUp(); joint.body2().wakeUp(); }
+      const actuatorActive = actuator.action === "drive" ? this.controls.throttle !== 0 : this.controls.steering !== 0;
+      if (actuatorActive) { joint.body1().wakeUp(); joint.body2().wakeUp(); }
     }
   }
 
