@@ -361,8 +361,8 @@ export class SandboxApplication {
     }
   };
 
-  public constructor(private readonly host: HTMLElement, private readonly composition: ApplicationComposition) {
-    this.view = new AppView(host);
+  public constructor(private readonly host: HTMLElement, private readonly composition: ApplicationComposition, playerName?: string) {
+    this.view = new AppView(host, playerName);
     this.renderer = new ThreeSimulationRenderer({
       onPick: this.onPick,
       onContextLost: (error) => { this.rendererReady = false; void this.failRuntime(error, "webgl-context-lost"); },

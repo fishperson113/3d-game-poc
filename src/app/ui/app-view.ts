@@ -44,7 +44,7 @@ export const palette = [
 export class AppView {
   private readonly root: HTMLElement;
 
-  public constructor(private readonly host: HTMLElement) {
+  public constructor(private readonly host: HTMLElement, playerName = "bạn") {
     host.innerHTML = `
       <div class="sandbox-shell">
         <header class="topbar">
@@ -53,6 +53,7 @@ export class AppView {
             <div>
               <p class="eyebrow">XƯỞNG XE STEM</p>
               <h1 class="game-title">Xưởng xe của bé</h1>
+              <p class="player-greeting">Chào <span data-role="player-name"></span> 👋</p>
             </div>
           </div>
           <div class="status-cluster">
@@ -170,7 +171,7 @@ export class AppView {
         <div class="modal-backdrop welcome-modal" data-role="welcome-modal">
           <div class="modal-card welcome-card">
             <div class="robot-avatar">🤖</div>
-            <h2>Sẵn sàng lắp xe chưa?</h2>
+            <h2 data-role="welcome-title">Sẵn sàng lắp xe chưa?</h2>
             <p class="robot-speech">
               Chọn phụ tùng, lắp chiếc xe của riêng mình và cùng Rô-Bô vượt thử thách nhé!
             </p>
@@ -292,6 +293,9 @@ export class AppView {
     }).join("");
 
     this.root = host.firstElementChild as HTMLElement;
+    const safePlayerName = playerName.trim() || "bạn";
+    this.element("player-name").textContent = safePlayerName;
+    this.element("welcome-title").textContent = `Chào ${safePlayerName}! Sẵn sàng lắp xe chưa?`;
   }
 
   public getElement(role: string): HTMLElement { return this.element(role); }

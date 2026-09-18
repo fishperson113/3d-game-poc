@@ -4,7 +4,11 @@ import { createApplicationComposition } from "./composition-root";
 import { SandboxApplication } from "./sandbox-application";
 import { PartPreviewApplication } from "./part-preview-application";
 
-export function bootstrapApplication(host: HTMLElement): void {
+export interface ApplicationBootstrapOptions {
+  readonly playerName?: string;
+}
+
+export function bootstrapApplication(host: HTMLElement, options: ApplicationBootstrapOptions = {}): void {
   host.setAttribute("aria-label", APP_NAME);
   const boot = async (): Promise<void> => {
     try {
@@ -13,7 +17,7 @@ export function bootstrapApplication(host: HTMLElement): void {
       const previewPartId = (import.meta.env as Record<string, string | undefined>).VITE_PART_PREVIEW_ID;
       const application = import.meta.env.MODE === "part-preview" && previewPartId !== undefined
         ? new PartPreviewApplication(host, composition, previewPartId)
-        : new SandboxApplication(host, composition);
+        : new SandboxApplication(host, composition, options.playerName);
       if (application instanceof SandboxApplication) await application.initialize();
       window.addEventListener("beforeunload", () => { void application.dispose(); }, { once: true });
       if (import.meta.hot) import.meta.hot.dispose(() => { void application.dispose(); });

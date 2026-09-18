@@ -7,7 +7,8 @@ if (host === null) throw new Error("Missing #app host element");
 
 const gate = new AuthGate(host, (access) => {
   host.replaceChildren();
-  bootstrapApplication(host);
+  const playerName = access.role === "child" ? access.child.name : access.user.name;
+  bootstrapApplication(host, { playerName });
   mountAccountDock(access, () => {
     document.querySelector(".account-dock")?.remove();
     if (access.role === "child") {

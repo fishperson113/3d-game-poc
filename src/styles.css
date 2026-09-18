@@ -331,6 +331,13 @@ button:disabled { cursor: not-allowed; opacity: 0.38; }
   border-bottom: 0;
   border-radius: 10px 10px 0 0;
 }
+.player-greeting {
+  margin: 0.12rem 0 0;
+  color: #cbd5e1;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+.player-greeting span { color: #7dd3fc; font-weight: 800; }
 .toolbar-spacer { flex: 1; }
 .level-chip {
   min-width: 6.4rem;
