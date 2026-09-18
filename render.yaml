@@ -3,12 +3,10 @@ services:
     name: besiege-lite-web-poc
     runtime: node
     plan: free
-    buildCommand: npm ci && npm run build
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
-      - key: NODE_ENV
-        value: production
       - key: BETTER_AUTH_URL
         value: https://besiege-lite-web-poc.onrender.com
       - key: BETTER_AUTH_SECRET
