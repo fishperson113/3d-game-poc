@@ -157,7 +157,7 @@ app.post("/api/child/login", asyncRoute(async (request, response) => {
   await database.query("INSERT INTO child_session (token_hash, child_id, expires_at, created_at) VALUES ($1, $2, $3, $4)",
     [hashToken(token), child.id, createdAt + 12 * 60 * 60_000, createdAt]);
   await database.query("INSERT INTO parent_notification (id, parent_user_id, child_id, message, created_at) VALUES ($1, $2, $3, $4, $5)",
-    [randomUUID(), child.parent_user_id, child.id, `${child.display_name} vừa đăng nhập vào STEM Car Lab.`, createdAt]);
+    [randomUUID(), child.parent_user_id, child.id, `${child.display_name} vừa đăng nhập vào CurioLab.`, createdAt]);
   response.cookie(childCookie, token, { httpOnly: true, sameSite: "lax", secure: isProduction, maxAge: 12 * 60 * 60_000, path: "/" });
   response.json({ child: { id: child.id, name: child.display_name } });
 }));
@@ -207,4 +207,4 @@ app.use((error: unknown, _request: Request, response: Response, _next: NextFunct
   response.status(500).json({ error: "Có lỗi xảy ra. Vui lòng thử lại." });
 });
 
-app.listen(port, () => { console.log(`STEM Car Lab listening on http://localhost:${String(port)}`); });
+app.listen(port, () => { console.log(`CurioLab listening on http://localhost:${String(port)}`); });

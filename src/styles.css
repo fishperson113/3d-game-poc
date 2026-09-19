@@ -27,6 +27,9 @@ body {
   user-select: none;
 }
 
+.brand-mark { display: block; flex: 0 0 auto; width: 3rem; height: 3rem; }
+.brand-mark-game { width: 2.55rem; height: 2.55rem; filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.18)); }
+
 /* Family access — intentionally reuses the existing dark STEM palette. */
 .auth-shell {
   width: 100%;
@@ -41,6 +44,26 @@ body {
     #090e17;
   user-select: text;
 }
+.auth-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(24rem, 0.88fr);
+  align-items: center;
+  gap: clamp(2rem, 6vw, 6rem);
+  width: min(72rem, 100%);
+}
+.brand-hero { position: relative; max-width: 36rem; padding: clamp(1rem, 3vw, 2rem); }
+.brand-hero::before { content: ""; position: absolute; z-index: -1; inset: -4rem -7rem; background: radial-gradient(circle, rgba(56, 189, 248, 0.12), transparent 66%); pointer-events: none; }
+.brand-lockup, .family-brand { display: flex; align-items: center; gap: 0.7rem; color: #f8fafc; font-size: 1.35rem; letter-spacing: -0.03em; }
+.brand-lockup .brand-mark { width: 2.7rem; height: 2.7rem; }
+.brand-overline { margin: 2.8rem 0 0.75rem; color: #7dd3fc; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.16em; }
+.brand-hero h1 { margin: 0; color: #f8fafc; font-size: clamp(3.25rem, 7vw, 6.4rem); line-height: 0.88; letter-spacing: -0.065em; text-wrap: balance; }
+.brand-hero h1 span { color: #fbbf24; }
+.brand-promise { max-width: 34rem; margin: 1.5rem 0 0; color: #cbd5e1; font-size: clamp(1rem, 1.6vw, 1.18rem); line-height: 1.65; text-wrap: pretty; }
+.brand-journey { display: flex; align-items: center; gap: 0.65rem; margin-top: 2rem; color: #e2e8f0; font-size: 0.82rem; font-weight: 700; }
+.brand-journey span { display: flex; align-items: center; gap: 0.35rem; }
+.brand-journey b { color: #38bdf8; font-size: 0.65rem; letter-spacing: 0.08em; }
+.brand-journey i { width: clamp(1rem, 3vw, 3rem); height: 1px; background: #334155; }
+.brand-parent-note { margin: 1.25rem 0 0; color: #64748b; font-size: 0.78rem; }
 .auth-card {
   width: min(100%, 32rem);
   padding: 2rem;
@@ -49,9 +72,9 @@ body {
   background: rgba(15, 23, 42, 0.97);
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
 }
-.auth-brand { display: flex; align-items: center; gap: 1rem; }
-.auth-brand > span { font-size: 2.5rem; }
-.auth-brand h1, .family-header h1 { margin: 0.2rem 0 0; font-size: clamp(1.55rem, 4vw, 2rem); }
+.auth-brand { display: flex; align-items: center; gap: 0.85rem; }
+.brand-mark-auth { width: 2.65rem; height: 2.65rem; }
+.auth-brand h2, .family-header h1 { margin: 0.2rem 0 0; color: #f8fafc; font-size: clamp(1.55rem, 4vw, 2rem); letter-spacing: -0.035em; }
 .auth-intro { margin: 1rem 0 1.25rem; color: #cbd5e1; line-height: 1.55; }
 .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; padding: 0.3rem; margin-bottom: 1.25rem; border-radius: 10px; background: #090e17; }
 .auth-tabs button { min-height: 44px; border: 0; background: transparent; color: var(--muted); }
@@ -79,10 +102,13 @@ body {
 .privacy-note strong { color: #86efac; }
 .privacy-note p { margin: 0.35rem 0 0; color: #cbd5e1; font-size: 0.8rem; line-height: 1.5; }
 .auth-loading { display: grid; justify-items: center; color: var(--muted); }
+.brand-mark-loading { width: 3.5rem; height: 3.5rem; margin-bottom: 1rem; }
 .auth-spinner { width: 2rem; height: 2rem; border: 3px solid #334155; border-top-color: var(--accent); border-radius: 50%; animation: auth-spin .7s linear infinite; }
 @keyframes auth-spin { to { transform: rotate(360deg); } }
 
 .family-card { width: min(100%, 48rem); }
+.family-brand { margin-bottom: 1.35rem; padding-bottom: 1rem; border-bottom: 1px solid var(--line); }
+.brand-mark-family { width: 2.35rem; height: 2.35rem; }
 .family-header, .section-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
 .family-header p, .section-title p { margin: 0.25rem 0 0; color: var(--muted); }
 .family-section { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--line); }
@@ -129,6 +155,16 @@ body {
   .create-child form { grid-template-columns: 1fr; }
   .create-child .auth-error { grid-column: auto; }
   .family-header { flex-direction: column; }
+}
+
+@media (max-width: 900px) {
+  .auth-stage { grid-template-columns: 1fr; gap: 1rem; width: min(32rem, 100%); }
+  .brand-hero { padding: 0 0.5rem; }
+  .brand-overline { margin-top: 1.25rem; }
+  .brand-hero h1 { font-size: clamp(2.8rem, 14vw, 4.5rem); }
+  .brand-promise { margin-top: 1rem; font-size: 0.95rem; }
+  .brand-journey { margin-top: 1.2rem; }
+  .brand-parent-note { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -264,6 +300,8 @@ button:disabled { cursor: not-allowed; opacity: 0.38; }
   color: #f8fafc;
   letter-spacing: -0.02em;
 }
+.welcome-brand { display: flex; align-items: center; justify-content: center; gap: 0.65rem; color: #f8fafc; font-size: 1.35rem; letter-spacing: -0.03em; }
+.brand-mark-welcome { width: 3.35rem; height: 3.35rem; }
 .status-cluster {
   display: flex;
   align-items: center;

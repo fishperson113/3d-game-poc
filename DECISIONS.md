@@ -1,4 +1,4 @@
-# Besiege-lite Web PoC — Architecture Decisions
+# CurioLab — Architecture Decisions
 
 **Status:** Accepted for PoC  
 **Date:** 2026-09-07  

@@ -1,4 +1,4 @@
-# Besiege-lite Web PoC
+# CurioLab
 
 Walking skeleton for the architecture accepted in [`DECISIONS.md`](./DECISIONS.md). The project uses vanilla TypeScript, Vite, Three.js, Rapier, Vitest and Playwright; there is no UI framework, ECS or multiplayer layer.
 

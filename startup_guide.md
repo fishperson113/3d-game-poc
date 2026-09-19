@@ -48,7 +48,7 @@ Dưới đây là báo cáo chi tiết về dự án, kết quả cài đặt v�
 
 ## 1. Tổng quan về phần mềm
 
-Dự án **Besiege-lite Web PoC** (Machine Sandbox) là một bản nguyên mẫu (Proof of Concept) trên nền web, lấy cảm hứng từ tựa game cơ khí vật lý nổi tiếng *Besiege*. Phần mềm cho phép người dùng tự do lắp ráp các cỗ máy / xe cộ từ các bộ phận cơ khí (khung sườn, trục bẻ lái, bánh xe gắn động cơ) và kích hoạt mô phỏng vật lý thời gian thực để trực tiếp lái thử nghiệm trên trình duyệt.
+Dự án **CurioLab** là một phòng thí nghiệm khám phá kỹ thuật trên nền web, sử dụng mô phỏng vật lý 3D để trẻ tự do lắp ráp các cỗ máy từ bộ phận cơ khí, chạy thử, quan sát và cải tiến thiết kế trực tiếp trên trình duyệt.
 
 ### Kiến trúc công nghệ cốt lõi:
 - **Ngôn ngữ & Bundler**: TypeScript (chế độ Strict), Vite 8.

@@ -2,6 +2,7 @@ import type { MachineBlueprint } from "../../building/domain/contracts";
 import type { EventEnvelope } from "../../kernel/events/contracts";
 import type { RuntimeState } from "../../kernel/runtime-contract";
 import type { ChallengeDefinition, ChallengeProgress } from "../../challenge";
+import { brandMark } from "../../brand";
 
 export interface AppViewModel {
   readonly state: RuntimeState;
@@ -68,9 +69,10 @@ export class AppView {
         <header class="topbar">
           <div class="brand-group">
             <button class="icon-button home-btn" data-action="open-welcome" title="Màn hình chính">🏠</button>
+            ${brandMark("brand-mark brand-mark-game")}
             <div>
-              <p class="eyebrow">XƯỞNG XE STEM</p>
-              <h1 class="game-title">Xưởng xe của bé</h1>
+              <p class="eyebrow">CURIOLAB · XƯỞNG KHÁM PHÁ</p>
+              <h1 class="game-title">Lắp thử, hiểu thật</h1>
               <p class="player-greeting">Chào <span data-role="player-name"></span> 👋</p>
             </div>
           </div>
@@ -191,10 +193,10 @@ export class AppView {
         <!-- MODAL 1: Màn hình chào mừng (Title / Welcome Screen) -->
         <div class="modal-backdrop welcome-modal" data-role="welcome-modal">
           <div class="modal-card welcome-card">
-            <div class="robot-avatar">🤖</div>
+            <div class="welcome-brand">${brandMark("brand-mark brand-mark-welcome")}<strong>CurioLab</strong></div>
             <h2 data-role="welcome-title">Sẵn sàng lắp xe chưa?</h2>
             <p class="robot-speech">
-              Chọn phụ tùng, lắp chiếc xe của riêng mình và cùng Rô-Bô vượt thử thách nhé!
+              Chọn phụ tùng, thử ý tưởng của riêng mình và cùng Rô-Bô tìm ra điều gì thực sự hoạt động.
             </p>
             <div class="welcome-features">
               <div class="feature-item"><span>🧩</span><b>Lắp xe</b><small>Chọn và ghép phụ tùng.</small></div>

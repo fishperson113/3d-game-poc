@@ -1,4 +1,4 @@
-export const APP_NAME = "Besiege-lite Web PoC";
+export const APP_NAME = "CurioLab";
 export const FIXED_TIMESTEP_SECONDS = 1 / 60;
 
 export type RuntimeState =

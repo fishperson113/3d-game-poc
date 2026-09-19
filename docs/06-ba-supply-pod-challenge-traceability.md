@@ -27,7 +27,7 @@ Tài liệu này là tài liệu phân tích, **không phải xác nhận rằng
 
 | Từ/cụm từ của BA | Ý nghĩa theo BA | Khái niệm hiện có trong repo | Mức tương ứng | Ghi chú |
 |---|---|---|---|---|
-| BuildLoop | Nền tảng trẻ nhận mission, lập kế hoạch, build, test và reflection | STEM Car Lab / Besiege-lite Web PoC | 🟡 Tương đương | Tên sản phẩm khác, vòng lặp build–test đã tồn tại |
+| BuildLoop | Nền tảng trẻ nhận mission, lập kế hoạch, build, test và reflection | CurioLab | 🟡 Tương đương | Tên sản phẩm khác, vòng lặp build–test đã tồn tại |
 | Challenge | Một nhiệm vụ kỹ thuật có bối cảnh, luật và điều kiện thành công | `ChallengeDefinition` | ✅ Đã có | Khai báo tại `src/challenge/domain/contracts.ts` |
 | Mission | Mục tiêu mà trẻ phải hoàn thành | `description`, `goalZone`, evaluator | ✅ Đã có | Màn 2 đánh giá vị trí của Supply Pod thay vì chassis |
 | BuildLoop Core Kit | Tập linh kiện vật lý được phép sử dụng | Part catalog gồm 8 loại phụ tùng | 🟡 Tương đương | Danh mục nằm trong `src/parts/` và palette trong `src/app/ui/app-view.ts` |

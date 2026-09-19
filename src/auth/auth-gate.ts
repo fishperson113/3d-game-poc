@@ -1,4 +1,5 @@
 import { authClient } from "./auth-client";
+import { brandMark } from "../brand";
 
 interface AccessParent {
   role: "parent";
@@ -53,16 +54,27 @@ export class AuthGate {
   }
 
   private renderLoading(): void {
-    this.host.innerHTML = `<main class="auth-shell"><section class="auth-card auth-loading" aria-live="polite"><span class="auth-spinner"></span><p>Đang mở STEM Car Lab…</p></section></main>`;
+    this.host.innerHTML = `<main class="auth-shell"><section class="auth-card auth-loading" aria-live="polite">${brandMark("brand-mark brand-mark-loading")}<span class="auth-spinner"></span><p>Đang mở CurioLab…</p></section></main>`;
   }
 
   private renderGuest(active: "parent-login" | "parent-register" | "child-login", message = ""): void {
     const isRegister = active === "parent-register";
     const isChild = active === "child-login";
     this.host.innerHTML = `
-      <main class="auth-shell">
-        <section class="auth-card" aria-labelledby="auth-title">
-          <div class="auth-brand"><span aria-hidden="true">🤖</span><div><p class="eyebrow">STEM CAR LAB · KHU VỰC GIA ĐÌNH</p><h1 id="auth-title">${isChild ? "Bé vào xưởng" : isRegister ? "Tạo tài khoản phụ huynh" : "Chào mừng trở lại"}</h1></div></div>
+      <main class="auth-shell auth-landing">
+        <div class="auth-stage">
+          <section class="brand-hero" aria-labelledby="brand-headline">
+            <div class="brand-lockup">${brandMark()}<strong>CurioLab</strong></div>
+            <p class="brand-overline">PHÒNG THÍ NGHIỆM TÒ MÒ</p>
+            <h1 id="brand-headline">Tò mò.<br /><span>Lắp thử.</span><br />Hiểu thật.</h1>
+            <p class="brand-promise">Một không gian 3D để trẻ biến câu hỏi thành mô hình, quan sát điều xảy ra và tự cải tiến bằng bằng chứng.</p>
+            <div class="brand-journey" aria-label="Ba bước học tại CurioLab">
+              <span><b>01</b> Nghĩ</span><i></i><span><b>02</b> Lắp</span><i></i><span><b>03</b> Thử</span>
+            </div>
+            <p class="brand-parent-note">Dành cho trẻ 9–13 tuổi · Phụ huynh quản lý tài khoản</p>
+          </section>
+          <section class="auth-card" aria-labelledby="auth-title">
+          <div class="auth-brand">${brandMark("brand-mark brand-mark-auth")}<div><p class="eyebrow">CURIOLAB · KHU VỰC GIA ĐÌNH</p><h2 id="auth-title">${isChild ? "Bé vào phòng lab" : isRegister ? "Tạo tài khoản phụ huynh" : "Chào mừng trở lại"}</h2></div></div>
           <p class="auth-intro">${isChild ? "Dùng mã hồ sơ và PIN do phụ huynh tạo. Bé không cần email." : "Tài khoản chính luôn thuộc về phụ huynh để quản lý hồ sơ và hoạt động của bé."}</p>
           <div class="auth-tabs" role="tablist" aria-label="Chọn cách đăng nhập">
             <button type="button" role="tab" aria-selected="${String(!isChild)}" data-tab="parent-login">Phụ huynh</button>
@@ -74,11 +86,12 @@ export class AuthGate {
               ? `<label>Mã hồ sơ<input name="code" autocomplete="username" required maxlength="6" autocapitalize="characters" spellcheck="false" /></label><label>PIN 4 số<input name="pin" type="password" inputmode="numeric" autocomplete="current-password" required minlength="4" maxlength="4" pattern="[0-9]{4}" /></label>`
               : `<label>Email phụ huynh<input name="email" type="email" autocomplete="email" required /></label><label>Mật khẩu<input name="password" type="password" autocomplete="${isRegister ? "new-password" : "current-password"}" required minlength="8" maxlength="128" /><small>Tối thiểu 8 ký tự.</small></label>`}
             <p class="auth-error" data-role="auth-error" aria-live="polite">${escapeHtml(message)}</p>
-            <button class="btn-stem btn-primary auth-submit" type="submit">${isChild ? "Vào xưởng" : isRegister ? "Tạo tài khoản" : "Đăng nhập"}</button>
+            <button class="btn-stem btn-primary auth-submit" type="submit">${isChild ? "Vào CurioLab" : isRegister ? "Tạo tài khoản" : "Đăng nhập"}</button>
           </form>
           ${!isChild ? `<button class="auth-link" type="button" data-tab="${isRegister ? "parent-login" : "parent-register"}">${isRegister ? "Đã có tài khoản? Đăng nhập" : "Chưa có tài khoản? Đăng ký"}</button>` : ""}
-          <div class="privacy-note"><strong>Quyền riêng tư của trẻ</strong><p>Chỉ lưu ảnh sản phẩm và thông tin được nhập. STEM Car Lab không thu hoặc lưu giọng nói hay khuôn mặt của trẻ.</p></div>
+          <div class="privacy-note"><strong>Quyền riêng tư của trẻ</strong><p>Chỉ lưu ảnh sản phẩm và thông tin được nhập. CurioLab không thu hoặc lưu giọng nói hay khuôn mặt của trẻ.</p></div>
         </section>
+        </div>
       </main>`;
     this.host.querySelectorAll<HTMLElement>("[data-tab]").forEach((button) => {
       button.addEventListener("click", () => { this.renderGuest(button.dataset.tab as typeof active); });
@@ -105,7 +118,7 @@ export class AuthGate {
       await this.initialize();
     } catch (reason) {
       if (error) error.textContent = reason instanceof Error ? reason.message : "Có lỗi xảy ra.";
-      if (submit) { submit.disabled = false; submit.textContent = mode === "child-login" ? "Vào xưởng" : mode === "parent-register" ? "Tạo tài khoản" : "Đăng nhập"; }
+      if (submit) { submit.disabled = false; submit.textContent = mode === "child-login" ? "Vào CurioLab" : mode === "parent-register" ? "Tạo tài khoản" : "Đăng nhập"; }
     }
   }
 
@@ -115,6 +128,7 @@ export class AuthGate {
     catch (reason) { this.renderGuest("parent-login", reason instanceof Error ? reason.message : "Phiên đăng nhập đã hết hạn."); return; }
     this.host.innerHTML = `
       <main class="auth-shell"><section class="auth-card family-card" aria-labelledby="family-title">
+        <div class="family-brand">${brandMark("brand-mark brand-mark-family")}<strong>CurioLab</strong></div>
         <div class="family-header"><div><p class="eyebrow">TÀI KHOẢN PHỤ HUYNH</p><h1 id="family-title">Xin chào, ${escapeHtml(access.user.name)}</h1><p>${escapeHtml(access.user.email)}</p></div><button type="button" class="auth-link" data-action="sign-out">Đăng xuất</button></div>
         ${notice ? `<p class="auth-success" role="status">${escapeHtml(notice)}</p>` : ""}
         <section class="family-section"><div class="section-title"><div><h2>Hồ sơ của bé</h2><p>Bé dùng mã hồ sơ + PIN, không cần email.</p></div></div>
@@ -124,7 +138,7 @@ export class AuthGate {
         <section class="family-section"><div class="section-title"><div><h2>Hoạt động đăng nhập</h2><p>Phụ huynh nhận thông tin mỗi khi bé đăng nhập.</p></div>${family.notifications.some((item) => item.readAt === null) ? `<button type="button" class="auth-link" data-action="read-all">Đánh dấu đã đọc</button>` : ""}</div>
           <div class="notification-list">${family.notifications.map((item) => `<article class="notification-item ${item.readAt === null ? "unread" : ""}"><span aria-hidden="true">${item.readAt === null ? "●" : "○"}</span><div><p>${escapeHtml(item.message)}</p><time>${new Date(item.createdAt).toLocaleString("vi-VN")}</time></div></article>`).join("") || `<p class="empty-family">Chưa có hoạt động đăng nhập.</p>`}</div>
         </section>
-        <button class="btn-stem btn-primary enter-lab" type="button" data-action="enter">Vào xưởng với tư cách phụ huynh 🚀</button>
+        <button class="btn-stem btn-primary enter-lab" type="button" data-action="enter">Vào CurioLab với tư cách phụ huynh</button>
         <div class="privacy-note"><strong>Dữ liệu tối giản</strong><p>Chỉ lưu tài khoản phụ huynh, hồ sơ trẻ, lịch sử đăng nhập, ảnh sản phẩm và thông tin được nhập. Không thu hoặc lưu voice/khuôn mặt trẻ.</p></div>
       </section></main>`;
     this.host.querySelector("[data-action=enter]")?.addEventListener("click", () => { this.onEnter(access); });
