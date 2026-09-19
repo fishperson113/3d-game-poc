@@ -10,6 +10,11 @@ describe("STEM Challenges Data", () => {
       expect(challenge.title).toBeTruthy();
       expect(challenge.subtitle).toBeTruthy();
       expect(challenge.stemTip).toBeTruthy();
+      expect(challenge.mission.context).toBeTruthy();
+      expect(challenge.mission.objective).toBeTruthy();
+      expect(challenge.mission.route).toHaveLength(2);
+      expect(challenge.mission.rules).toHaveLength(3);
+      expect(challenge.mission.success).toBeTruthy();
       expect(challenge.targetTimeSeconds).toBeGreaterThan(0);
       expect(challenge.environment.spawn).toHaveLength(3);
       expect(challenge.environment.ground).toBeDefined();

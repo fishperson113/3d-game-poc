@@ -36,6 +36,14 @@ export interface ChallengeDefinition {
   readonly subtitle: string;
   readonly description: string;
   readonly stemTip: string;
+  readonly mission: {
+    readonly kicker: string;
+    readonly context: string;
+    readonly objective: string;
+    readonly route: readonly [string, string];
+    readonly rules: readonly [string, string, string];
+    readonly success: string;
+  };
   readonly icon: string;
   readonly environment: SimulationEnvironment;
   readonly targetTimeSeconds: number;

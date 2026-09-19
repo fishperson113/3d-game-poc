@@ -28,6 +28,7 @@ export interface AppViewModel {
   readonly showWelcomeModal: boolean;
   readonly showChallengeModal: boolean;
   readonly showAdvancedPanel: boolean;
+  readonly challengeBriefing?: { readonly challenge: ChallengeDefinition; readonly showModal: boolean };
   readonly supplyMission?: {
     readonly stage: "briefing" | "plan" | "build-v1" | "review-v1" | "build-v2" | "reflection" | "report";
     readonly showModal: boolean;
@@ -262,6 +263,13 @@ export class AppView {
           </section>
         </div>
 
+        <div class="modal-backdrop mission-modal" data-role="challenge-briefing-modal" style="display:none;">
+          <section class="modal-card mission-card" aria-labelledby="challenge-briefing-title">
+            <button class="close-btn mission-close" data-action="close-challenge-briefing" aria-label="Đóng">✕</button>
+            <div data-role="challenge-briefing-content"></div>
+          </section>
+        </div>
+
         <!-- MODAL 5: Mobile Device Fallback Overlay -->
         <div class="mobile-fallback-overlay" data-role="mobile-fallback">
           <div class="mobile-fallback-card">
@@ -428,6 +436,7 @@ export class AppView {
     this.element("challenge-modal").style.display = model.showChallengeModal ? "flex" : "none";
 
     this.renderSupplyMission(model.supplyMission);
+    this.renderChallengeBriefing(model.challengeBriefing, model.supplyMission !== undefined);
 
     // Render Challenges Grid in modal
     if (model.showChallengeModal) {
@@ -447,7 +456,7 @@ export class AppView {
                   ${isCurrent ? '<span class="ch-current-badge">Đang chọn</span>' : ""}
                 </div>
                 <div class="ch-sub">${c.subtitle}</div>
-                <div class="ch-tip">${c.stemTip}</div>
+                <div class="ch-tip">${c.description}</div>
               </div>
               <div class="ch-stars">${starsStr}</div>
             </div>
@@ -504,7 +513,6 @@ export class AppView {
     const modal = this.element("supply-mission-modal");
     const sampleTools = this.element("sample-tools");
     if (mission === undefined) {
-      chip.style.display = "none";
       modal.style.display = "none";
       sampleTools.style.display = "grid";
       return;
@@ -590,6 +598,31 @@ export class AppView {
         <section class="parent-evidence"><b>Dành cho phụ huynh</b><p><strong>Kỹ năng:</strong> Thử nghiệm có kiểm soát.</p><p><strong>Bằng chứng:</strong> Con thay đổi ${this.escapeHtml(mission.variableChanged ?? "một biến")}; quãng đường ${String(first?.distanceCm ?? 0)}cm → ${String(second?.distanceCm ?? 0)}cm.</p><p><strong>Mức hỗ trợ:</strong> Gợi ý cao nhất Level ${String(mission.highestHintTier)}/5; ${mission.adultHelp ? "có người lớn hỗ trợ" : "không ghi nhận người lớn can thiệp"}.</p></section>
         <button class="btn-stem btn-primary mission-primary" data-action="close-supply-mission">Về xưởng</button>`;
     }
+  }
+
+  private renderChallengeBriefing(briefing: AppViewModel["challengeBriefing"], hasSupplyMission: boolean): void {
+    const chip = this.element("mission-chip");
+    const modal = this.element("challenge-briefing-modal");
+    if (briefing === undefined) {
+      modal.style.display = "none";
+      if (!hasSupplyMission) chip.style.display = "none";
+      return;
+    }
+    const { challenge } = briefing;
+    chip.style.display = "inline-flex";
+    chip.textContent = `${challenge.icon} Nhiệm vụ`;
+    modal.style.display = briefing.showModal ? "flex" : "none";
+    if (!briefing.showModal) return;
+    const mission = challenge.mission;
+    this.element("challenge-briefing-content").innerHTML = `
+      <p class="mission-kicker">${this.escapeHtml(mission.kicker)}</p>
+      <h2 id="challenge-briefing-title">${this.escapeHtml(challenge.title)}</h2>
+      <p class="mission-lead">${this.escapeHtml(mission.context)}</p>
+      <div class="mission-scene" aria-label="Lộ trình nhiệm vụ"><span>${this.escapeHtml(mission.route[0])}</span><b>→</b><span>${this.escapeHtml(mission.route[1])}</span></div>
+      <p class="mission-objective"><strong>Nhiệm vụ:</strong> ${this.escapeHtml(mission.objective)}</p>
+      <ul class="mission-rules">${mission.rules.map((rule) => `<li>${this.escapeHtml(rule)}</li>`).join("")}</ul>
+      <p class="mission-success"><strong>Hoàn thành khi:</strong> ${this.escapeHtml(mission.success)}</p>
+      <button class="btn-stem btn-primary mission-primary" data-action="close-challenge-briefing">Con nhận nhiệm vụ</button>`;
   }
 
   private attemptSummary(attempt: NonNullable<AppViewModel["supplyMission"]>["attempts"][number] | undefined): string {

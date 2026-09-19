@@ -80,6 +80,7 @@ export class SandboxApplication {
   private failState: { message: string; stemTip: string } | undefined;
   private showWelcomeModal = true;
   private showChallengeModal = false;
+  private showChallengeBriefingModal = false;
   private showAdvancedPanel = false;
   private supplyMission: SupplyMissionState = { stage: "briefing", showModal: false, attempts: [] };
   private activeSupplyAttempt: ActiveSupplyAttempt | undefined;
@@ -167,6 +168,7 @@ export class SandboxApplication {
     } else if (action === "close-welcome") {
       soundEffects.playClick();
       this.showWelcomeModal = false;
+      if (this.currentChallengeId !== "the-gap") this.showChallengeBriefingModal = true;
       this.refreshView();
     } else if (action === "open-challenges") {
       soundEffects.playClick();
@@ -233,10 +235,14 @@ export class SandboxApplication {
       const mobileOverlay = this.host.querySelector<HTMLElement>("[data-role=mobile-fallback]");
       if (mobileOverlay) mobileOverlay.style.display = "none";
     } else if (action === "open-supply-mission") {
-      this.supplyMission.showModal = true;
+      if (this.currentChallengeId === "the-gap") this.supplyMission.showModal = true;
+      else this.showChallengeBriefingModal = true;
       this.refreshView();
     } else if (action === "close-supply-mission") {
       this.supplyMission.showModal = false;
+      this.refreshView();
+    } else if (action === "close-challenge-briefing") {
+      this.showChallengeBriefingModal = false;
       this.refreshView();
     } else if (action === "accept-supply-mission") {
       const understood = this.view.getElement("supply-mission-modal").querySelector<HTMLInputElement>('[data-role="mission-understood"]');
@@ -596,6 +602,7 @@ export class SandboxApplication {
     } else if (this.blueprint.parts.length === 0 && challenge.environment.payload === undefined) {
       await this.loadSample();
     }
+    this.showChallengeBriefingModal = challengeId !== "the-gap";
     this.renderer.setBlueprint(this.blueprint, this.composition.catalog, this.variants);
     this.renderer.resetCamera();
     this.feedback = { tone: "good", message: `Đã nạp ${challenge.title}: ${challenge.subtitle}` };
@@ -1055,6 +1062,7 @@ export class SandboxApplication {
       showWelcomeModal: this.showWelcomeModal,
       showChallengeModal: this.showChallengeModal,
       showAdvancedPanel: this.showAdvancedPanel,
+      ...(this.currentChallengeId === "the-gap" ? {} : { challengeBriefing: { challenge: this.getCurrentChallenge(), showModal: this.showChallengeBriefingModal } }),
       ...(this.currentChallengeId === "the-gap" ? { supplyMission: { ...this.supplyMission, highestHintTier: this.aiService.getState().highestTierUnlocked } } : {}),
     });
     this.host.dataset.blueprintJson = JSON.stringify(this.blueprint);

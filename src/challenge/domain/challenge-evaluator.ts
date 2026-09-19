@@ -98,7 +98,7 @@ export class RealtimeChallengeEvaluator {
         distanceToGoal: 0,
         elapsedSeconds: this.elapsedSeconds,
         stars,
-        message: `Xuất sắc! Bạn đã về đích trong ${this.elapsedSeconds.toFixed(1)}s!`,
+        message: `Xuất sắc! ${this.challenge.mission.success} Thời gian: ${this.elapsedSeconds.toFixed(1)} giây.`,
       };
     }
 
